@@ -80,3 +80,12 @@
 .vehicle-filter__submit{align-self:end;min-height:43px;padding:10px 16px;border:0;border-radius:9px;background:var(--orange);color:#fff;font-weight:800;white-space:nowrap}
 @media(max-width:800px){.vehicle-filter{padding:15px;margin-bottom:20px}.vehicle-filter__fields{grid-template-columns:1fr 1fr}.vehicle-filter__fields label:first-child{grid-column:1/-1}.vehicle-filter__submit{grid-column:1/-1;width:100%}}
 @media(max-width:380px){.vehicle-filter__fields{grid-template-columns:1fr}}
+
+
+/* Stable product cards when an external image is unavailable */
+.product-image{overflow:hidden;isolation:isolate}
+.product-image>img{color:transparent;font-size:0;background:var(--surface2)}
+.product-card{display:flex;flex-direction:column;min-width:0}
+.product-info{display:flex;flex:1;flex-direction:column;min-width:0}
+.product-info h3{min-height:36px;overflow:hidden}
+.product-info footer{margin-top:auto}
