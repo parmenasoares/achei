@@ -526,22 +526,29 @@
                 supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 console.log('✅ Cliente Supabase criado');
 
-                // Testar conexão
-                const { data, error } = await supabase
-                    .from('products')
-                    .select('count')
-                    .limit(1);
+                // Promise que resolve em 5 segundos
+                const timeoutPromise = new Promise((resolve) => {
+                    setTimeout(() => {
+                        console.warn('⏱️ Timeout (5s) - Carregando produtos do Supabase ou usando demo');
+                        resolve(null);
+                    }, 5000);
+                });
 
-                if (error) {
-                    console.error('❌ Erro na conexão:', error.message);
+                // Correr Supabase e timeout em paralelo
+                const result = await Promise.race([
+                    loadProductsFromSupabase(),
+                    timeoutPromise
+                ]);
+
+                // Se chegou aqui e não tem produtos, usar demo
+                if (!allProducts || allProducts.length === 0) {
+                    console.log('📦 Nenhum produto carregado, usando demo');
                     loadDemoProducts();
-                } else {
-                    console.log('✅ Supabase conectado com sucesso!');
-                    await loadProductsFromSupabase();
                 }
+
             } catch (error) {
                 console.error('❌ Erro fatal:', error.message);
-                console.log('⚠️ Usando modo demo');
+                console.log('⚠️ Carregando modo demo');
                 loadDemoProducts();
             }
         }
@@ -556,22 +563,31 @@
                     .order('created_at', { ascending: false });
 
                 if (error) {
-                    console.error('❌ Erro ao buscar:', error);
-                    throw error;
+                    console.error('❌ Erro Supabase:', error.message);
+                    console.error('Erro completo:', error);
+                    loadDemoProducts();
+                    return;
                 }
 
-                console.log('✅ Produtos carregados:', data.length);
-                allProducts = data || [];
+                if (!data || data.length === 0) {
+                    console.warn('⚠️ Nenhum produto encontrado no Supabase');
+                    loadDemoProducts();
+                    return;
+                }
+
+                console.log('✅ Produtos carregados DO SUPABASE:', data.length);
+                allProducts = data;
                 renderProducts();
                 renderFilters();
             } catch (error) {
-                console.error('Erro ao carregar Supabase, usando demo:', error);
+                console.error('Erro ao carregar Supabase:', error.message);
+                console.log('⚠️ Usando modo demo');
                 loadDemoProducts();
             }
         }
 
         function loadDemoProducts() {
-            console.log('📦 Carregando modo demo (8 produtos)');
+            console.log('📦 MODO DEMO: Carregando 8 produtos de teste');
             allProducts = [
                 { id: 1, name: 'Amortecedor Dianteiro Premium', category: 'Suspensão', price: 289.90, badge: 'PROMOÇÃO', rating: 4.8, reviews: 143 },
                 { id: 2, name: 'Pastilha de Freio Cerâmica', category: 'Freio', price: 145.50, badge: 'POPULAR', rating: 4.9, reviews: 267 },
@@ -582,6 +598,7 @@
                 { id: 7, name: 'Óleo do Motor 5W-30', category: 'Lubrificantes', price: 45.90, badge: 'PROMOÇÃO', rating: 4.9, reviews: 567 },
                 { id: 8, name: 'Filtro de Ar', category: 'Filtros', price: 89.90, badge: 'POPULAR', rating: 4.7, reviews: 234 },
             ];
+            console.log('✅ Modo demo pronto com', allProducts.length, 'produtos');
             renderProducts();
             renderFilters();
         }
