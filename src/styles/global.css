@@ -15,3 +15,33 @@
 .category-icon{display:grid;place-items:center;width:44px;height:44px;border-radius:13px;background:#ffffff;color:var(--orange);font-size:25px;box-shadow:0 3px 10px #0003}
 .category-tile.active .category-icon{background:#fff3ed;box-shadow:0 0 0 3px #ff5a1f33}
 @media(min-width:801px){.category-section{padding-block:34px 12px}.category-heading h2{font-size:30px}.category-rail{padding-inline:0;margin:0;overflow:visible}.category-tile{flex:1;max-width:116px;min-height:112px;font-size:12px}.category-heading>span{display:none}}
+
+
+/* Mobile bottom navigation and compact header */
+.mobile-bottom-nav{display:none}
+@media(max-width:800px){
+  body{padding-bottom:78px}
+  .offer{min-height:38px;display:flex;align-items:center;justify-content:center;padding:7px 14px;font-size:11px;line-height:1.25}
+  .offer i{margin:0 5px}
+  header .top{height:68px;gap:10px;padding-inline:16px}
+  header nav{display:none}
+  .top .logo{font-size:25px}
+  .header-actions{gap:8px}
+  .header-actions>button:first-child{width:42px;height:42px;padding:0}
+  .header-actions .cart{height:42px;padding:10px 12px;font-size:14px;white-space:nowrap}
+  .header-actions .cart b{padding:2px 6px}
+  .mobile-bottom-nav{position:fixed;z-index:25;left:0;right:0;bottom:0;display:flex;align-items:stretch;justify-content:space-around;min-height:72px;padding:7px max(12px,env(safe-area-inset-left)) calc(7px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-right));background:#fff;border-top:1px solid #e7e7e7;box-shadow:0 -8px 26px #0003}
+  .mobile-bottom-nav button{flex:1;min-width:58px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:4px 2px;border:0;background:transparent;color:#8d96a4;font-size:11px;font-weight:700}
+  .mobile-bottom-nav button.active{color:var(--orange)}
+  .bottom-icon{display:grid;place-items:center;width:28px;height:28px;color:inherit;font-size:29px;font-family:Arial,sans-serif;font-weight:400;line-height:1}
+  .bottom-icon.search{font-size:35px;transform:rotate(-15deg)}
+  .bottom-icon.track{font-size:24px}
+  .bottom-icon.auth{font-size:23px;color:inherit}
+  .mobile-bottom-nav button.active .bottom-icon{color:var(--orange)}
+}
+@media(max-width:360px){
+  .top .logo{font-size:22px}
+  .header-actions .cart{font-size:0;width:46px;padding:0}
+  .header-actions .cart::first-letter{font-size:16px}
+  .header-actions .cart b{font-size:12px}
+}
