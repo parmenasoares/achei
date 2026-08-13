@@ -53,6 +53,14 @@ create table if not exists public.courier_applications (
   created_at timestamptz not null default now()
 );
 
+-- Compatibility upgrades for projects where tables already existed
+alter table public.stores add column if not exists active boolean not null default true;
+alter table public.products add column if not exists active boolean not null default true;
+alter table public.products add column if not exists created_at timestamptz not null default now();
+alter table public.products add column if not exists years text[] not null default '{}';
+alter table public.products add column if not exists engines text[] not null default '{}';
+alter table public.courier_applications add column if not exists status text not null default 'Em análise';
+
 alter table public.profiles enable row level security;
 alter table public.stores enable row level security;
 alter table public.products enable row level security;
@@ -65,10 +73,17 @@ grant select, insert, update on public.stores to authenticated;
 grant select, insert, update, delete on public.products to authenticated;
 grant select on public.courier_applications to authenticated;
 
+drop policy if exists "Public can browse active stores" on public.stores;
 create policy "Public can browse active stores" on public.stores for select using (active = true);
+drop policy if exists "Public can browse active products" on public.products;
 create policy "Public can browse active products" on public.products for select using (active = true);
+drop policy if exists "Users read their profile" on public.profiles;
 create policy "Users read their profile" on public.profiles for select to authenticated using ((select auth.uid()) = id);
+drop policy if exists "Users update their profile" on public.profiles;
 create policy "Users update their profile" on public.profiles for update to authenticated using ((select auth.uid()) = id) with check ((select auth.uid()) = id);
+drop policy if exists "Couriers submit their own application" on public.courier_applications;
 create policy "Couriers submit their own application" on public.courier_applications for insert to anon, authenticated with check (true);
+drop policy if exists "Sellers manage own store" on public.stores;
 create policy "Sellers manage own store" on public.stores for all to authenticated using ((select auth.uid()) = owner_id) with check ((select auth.uid()) = owner_id);
+drop policy if exists "Sellers manage their products" on public.products;
 create policy "Sellers manage their products" on public.products for all to authenticated using (seller_id in (select id from public.stores where owner_id = (select auth.uid()))) with check (seller_id in (select id from public.stores where owner_id = (select auth.uid())));
