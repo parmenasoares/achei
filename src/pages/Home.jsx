@@ -1,9 +1,10 @@
 import HeroSlider from '../components/HeroSlider.jsx'
 import CategoryRail from '../components/CategoryRail.jsx'
 import ProductCard from '../components/ProductCard.jsx'
+import VehicleFilter from '../components/VehicleFilter.jsx'
 import { categories } from '../data/catalog.js'
 
-export default function Home({ products, category, setCategory, sort, setSort, favorites, onFavorite, onOpen, onAdd, onPage }) {
+export default function Home({ products, category, setCategory, sort, setSort, favorites, onFavorite, onOpen, onAdd, onPage, vehicleFilters, setVehicleFilters }) {
   const catalog = () => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' })
 
   return (
@@ -15,6 +16,7 @@ export default function Home({ products, category, setCategory, sort, setSort, f
           <div><small>CATÁLOGO AUTOMOTIVO</small><h2>🔥 Produtos disponíveis</h2></div>
           <span>{products.length} produtos</span>
         </div>
+        <VehicleFilter value={vehicleFilters} onChange={setVehicleFilters} />
         <div className="filters">
           {categories.map(c => <button className={c === category ? 'active' : ''} key={c} onClick={() => setCategory(c)}>{c}</button>)}
           <select value={sort} onChange={e => setSort(e.target.value)}>
