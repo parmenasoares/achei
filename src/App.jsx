@@ -20,6 +20,7 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('Todos')
   const [sort, setSort] = useState('default')
+  const [vehicleFilters, setVehicleFilters] = useState({ part: '', make: '', model: '', year: '', engine: '' })
   const [favorites, setFavorites] = useState(read('acheii_wish'))
   const [cart, setCart] = useState(read('acheii_cart'))
   const [selected, setSelected] = useState(null)
@@ -32,7 +33,17 @@ export default function App() {
   useEffect(() => localStorage.setItem('acheii_cart', JSON.stringify(cart)), [cart])
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 2600); return () => clearTimeout(timer) }, [toast])
 
-  const visible = useMemo(() => products.filter(product => (category === 'Todos' || product.category === category) && (`${product.name} ${product.category}`.toLowerCase().includes(query.toLowerCase()))).sort((a, b) => sort === 'price-asc' ? a.price - b.price : sort === 'price-desc' ? b.price - a.price : sort === 'rating' ? b.rating - a.rating : 0), [query, category, sort])
+  const visible = useMemo(() => products.filter(product => {
+    const fit = product.fitment
+    const text = `${product.name} ${product.category} ${product.description}`.toLowerCase()
+    return (category === 'Todos' || product.category === category)
+      && text.includes(query.toLowerCase())
+      && text.includes(vehicleFilters.part.toLowerCase())
+      && (!vehicleFilters.make || fit.make === vehicleFilters.make)
+      && (!vehicleFilters.model || fit.model === vehicleFilters.model)
+      && (!vehicleFilters.year || fit.years.includes(vehicleFilters.year))
+      && (!vehicleFilters.engine || fit.engines.includes(vehicleFilters.engine))
+  }).sort((a, b) => sort === 'price-asc' ? a.price - b.price : sort === 'price-desc' ? b.price - a.price : sort === 'rating' ? b.rating - a.rating : 0), [query, category, sort, vehicleFilters])
   const navigate = nextPage => { setPage(nextPage); setDrawer(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const openSearch = () => { navigate('home'); setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100) }
   const add = product => { setCart(items => { const item = items.find(x => x.id === product.id); return item ? items.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x) : [...items, { ...product, qty: 1 }] }); setToast('Produto adicionado ao carrinho!') }
@@ -41,7 +52,7 @@ export default function App() {
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const selectCategory = value => { setCategory(value); navigate('home'); setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100) }
 
-  const content = page === 'home' ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} />
+  const content = page === 'home' ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
     : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('home')} onSeller={() => navigate('seller')} />
     : page === 'seller' ? <Seller products={products} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
     : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={() => { setCart([]); setToast('Pedido confirmado!'); navigate('track') }} />
