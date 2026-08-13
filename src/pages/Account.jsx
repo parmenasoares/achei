@@ -1,28 +1,29 @@
+import { useState } from 'react'
+
 const orders = [
-  { id: 'ACH-2025-00123', status: 'Em trânsito', date: '12 jan 2025', total: 'R$ 289,90' },
-  { id: 'ACH-2024-00992', status: 'Entregue', date: '28 dez 2024', total: 'R$ 145,50' }
+  { id: 'ACH-2025-00123', status: 'Em trânsito', date: '12 jan 2025', total: 'R$ 289,90', item: 'Amortecedor Dianteiro Premium' },
+  { id: 'ACH-2024-00992', status: 'Entregue', date: '28 dez 2024', total: 'R$ 145,50', item: 'Pastilha de Freio Cerâmica' },
+  { id: 'ACH-2024-00981', status: 'Entregue', date: '19 dez 2024', total: 'R$ 89,90', item: 'Filtro de Ar' }
 ]
 
 export default function Account({ onNavigate }) {
-  return (
-    <main className="container dashboard-page">
-      <section className="dashboard-hero">
-        <div className="profile-avatar">PS</div>
-        <div><small>MINHA CONTA</small><h1>Olá, Pármenas</h1><p>Gerencie pedidos, dados e seus produtos favoritos.</p></div>
-        <button className="secondary" onClick={() => onNavigate('auth')}>Editar perfil</button>
-      </section>
-      <div className="dashboard-tabs">
-        <button className="active">Visão geral</button><button onClick={() => onNavigate('track')}>Meus pedidos</button><button>Endereços</button><button>Pagamentos</button>
-      </div>
-      <section className="dashboard-cards">
-        <article><span>📦</span><b>2</b><small>Pedidos em andamento</small></article>
-        <article><span>♥</span><b>6</b><small>Produtos favoritos</small></article>
-        <article><span>🏆</span><b>R$ 84</b><small>Economia acumulada</small></article>
-      </section>
-      <section className="dashboard-grid">
-        <article className="panel"><div className="panel-title"><h2>Pedidos recentes</h2><button onClick={() => onNavigate('track')}>Ver todos</button></div>{orders.map(order => <div className="order-row" key={order.id}><span>📦</span><div><b>{order.id}</b><small>{order.date}</small></div><em className={order.status === 'Entregue' ? 'done' : ''}>{order.status}</em><b>{order.total}</b></div>)}</article>
-        <article className="panel"><div className="panel-title"><h2>Atalhos</h2></div><button className="quick-link" onClick={() => onNavigate('home')}>🛍️ Continuar comprando <span>›</span></button><button className="quick-link">📍 Meus endereços <span>›</span></button><button className="quick-link">💳 Formas de pagamento <span>›</span></button></article>
-      </section>
-    </main>
-  )
+  const [section, setSection] = useState('overview')
+  const [addresses, setAddresses] = useState([{ name: 'Casa', address: 'Rua das Flores, 123 — São Paulo/SP', main: true }])
+  const [editing, setEditing] = useState(false)
+
+  const tabs = [['overview','Visão geral'],['orders','Meus pedidos'],['addresses','Endereços'],['payments','Pagamentos'],['profile','Perfil']]
+  const title = { overview:'Minha conta', orders:'Meus pedidos', addresses:'Endereços', payments:'Pagamentos', profile:'Dados pessoais' }[section]
+
+  return <main className="container dashboard-page">
+    <section className="dashboard-hero"><div className="profile-avatar">PS</div><div><small>ÁREA DO COMPRADOR</small><h1>Olá, Pármenas</h1><p>Gerencie suas compras, dados e preferências.</p></div><button className="secondary" onClick={() => setSection('profile')}>Editar perfil</button></section>
+    <div className="dashboard-tabs">{tabs.map(([id,label]) => <button className={section === id ? 'active' : ''} key={id} onClick={() => setSection(id)}>{label}</button>)}</div>
+    <section className="portal-title"><div><small>PAINEL DO COMPRADOR</small><h2>{title}</h2></div>{section === 'orders' && <button className="secondary" onClick={() => onNavigate('track')}>Rastrear pedido</button>}{section === 'addresses' && <button className="primary" onClick={() => setAddresses(list => [...list, { name:'Novo endereço', address:'Av. Paulista, 1000 — São Paulo/SP', main:false }])}>+ Novo endereço</button>}</section>
+    {section === 'overview' && <><section className="dashboard-cards"><article><span>📦</span><b>2</b><small>Pedidos em andamento</small></article><article><span>♥</span><b>6</b><small>Produtos favoritos</small></article><article><span>🏆</span><b>R$ 84</b><small>Economia acumulada</small></article></section><section className="dashboard-grid"><article className="panel"><div className="panel-title"><h2>Pedidos recentes</h2><button onClick={() => setSection('orders')}>Ver todos</button></div>{orders.slice(0,2).map(order => <OrderRow key={order.id} order={order} />)}</article><article className="panel"><div className="panel-title"><h2>Atalhos</h2></div><button className="quick-link" onClick={() => onNavigate('home')}>🛍️ Continuar comprando <span>›</span></button><button className="quick-link" onClick={() => setSection('addresses')}>📍 Meus endereços <span>›</span></button><button className="quick-link" onClick={() => setSection('payments')}>💳 Formas de pagamento <span>›</span></button></article></section></>}
+    {section === 'orders' && <article className="panel"><div className="panel-title"><h2>Histórico de pedidos</h2><button onClick={() => onNavigate('home')}>Comprar novamente</button></div>{orders.map(order => <OrderRow key={order.id} order={order} detail />)}</article>}
+    {section === 'addresses' && <section className="portal-grid">{addresses.map((address,index) => <article className="panel address-card" key={address.name+index}><b>📍 {address.name} {address.main && <em>Principal</em>}</b><p>{address.address}</p><button onClick={() => setAddresses(list => list.map((item,i) => ({...item, main:i===index}))}>Definir como principal</button></article>)}</section>}
+    {section === 'payments' && <section className="portal-grid"><article className="panel address-card"><b>💳 Visa final 4821 <em>Principal</em></b><p>Válido até 08/28</p><button>Editar cartão</button></article><article className="panel address-card"><b>⚡ PIX</b><p>Pagamento instantâneo disponível</p><button>Gerenciar chaves</button></article></section>}
+    {section === 'profile' && <article className="panel profile-form"><div className="panel-title"><h2>Dados pessoais</h2><button onClick={() => setEditing(!editing)}>{editing ? 'Cancelar' : 'Editar'}</button></div><label>Nome<input disabled={!editing} defaultValue="Pármenas Soares" /></label><label>E-mail<input disabled={!editing} defaultValue="comprador@acheii.demo" /></label><label>Telefone<input disabled={!editing} defaultValue="(11) 99999-0000" /></label>{editing && <button className="primary">Salvar alterações</button>}</article>}
+  </main>
 }
+
+function OrderRow({ order, detail }) { return <div className="order-row"><span>📦</span><div><b>{order.id}</b><small>{detail ? order.item : order.date}</small></div><em className={order.status === 'Entregue' ? 'done' : ''}>{order.status}</em><b>{order.total}</b></div> }
