@@ -1,15 +1,103 @@
 import { useEffect, useMemo, useState } from 'react'
-import Header from './components/Header.jsx'; import Footer from './components/Footer.jsx'
-import Home from './pages/Home.jsx'; import Product from './pages/Product.jsx'; import Seller from './pages/Seller.jsx'; import Checkout from './pages/Checkout.jsx'; import Track from './pages/Track.jsx'; import Auth from './pages/Auth.jsx'
+import Header from './components/Header.jsx'
+import Footer from './components/Footer.jsx'
+import MobileBottomNav from './components/MobileBottomNav.jsx'
+import Home from './pages/Home.jsx'
+import Product from './pages/Product.jsx'
+import Seller from './pages/Seller.jsx'
+import Checkout from './pages/Checkout.jsx'
+import Track from './pages/Track.jsx'
+import Auth from './pages/Auth.jsx'
 import { products } from './data/catalog.js'
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
+
 export default function App() {
-  const [page,setPage]=useState('home'), [query,setQuery]=useState(''), [category,setCategory]=useState('Todos'), [sort,setSort]=useState('default'), [favorites,setFavorites]=useState(read('acheii_wish')), [cart,setCart]=useState(read('acheii_cart')), [selected,setSelected]=useState(null), [drawer,setDrawer]=useState(null), [payment,setPayment]=useState('Cartão de crédito'), [toast,setToast]=useState(''), [chat,setChat]=useState(false)
-  useEffect(()=>localStorage.setItem('acheii_wish',JSON.stringify(favorites)),[favorites]); useEffect(()=>localStorage.setItem('acheii_cart',JSON.stringify(cart)),[cart]); useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),2600);return()=>clearTimeout(t)},[toast])
-  const visible=useMemo(()=>products.filter(p=>(category==='Todos'||p.category===category)&&(`${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase()))).sort((a,b)=>sort==='price-asc'?a.price-b.price:sort==='price-desc'?b.price-a.price:sort==='rating'?b.rating-a.rating:0),[query,category,sort])
-  const navigate=p=>{setPage(p); setDrawer(null); window.scrollTo({top:0,behavior:'smooth'})}; const add=p=>{setCart(items=>{const item=items.find(x=>x.id===p.id);return item?items.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x):[...items,{...p,qty:1}]});setToast(`${p.emoji} Adicionado ao carrinho!`)}; const open=p=>{setSelected(p);navigate('product')}; const toggle=id=>setFavorites(items=>items.includes(id)?items.filter(x=>x!==id):[...items,id]); const cartCount=cart.reduce((s,x)=>s+x.qty,0)
-  const selectCategory=c=>{setCategory(c);navigate('home');setTimeout(()=>document.getElementById('catalog')?.scrollIntoView({behavior:'smooth'}),100)}
-  let content = page==='home'?<Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate}/>:page==='product'?<Product product={selected} favorite={selected&&favorites.includes(selected.id)} onFavorite={toggle} onAdd={(p,buy)=>{add(p);if(buy)navigate('checkout')}} onBack={()=>navigate('home')} onSeller={()=>navigate('seller')}/>:page==='seller'?<Seller products={products} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={()=>setChat(true)}/>:page==='checkout'?<Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={()=>{setCart([]);setToast('✅ Pedido confirmado!');navigate('track')}}/>:page==='track'?<Track/>:<Auth onLogin={()=>{setToast('✅ Login realizado!');navigate('home')}}/>
-  return <><Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={()=>setDrawer('cart')} onFavorites={()=>setDrawer('favorites')}/>{content}<Footer onPage={navigate}/>{drawer&&<div className="overlay" onClick={()=>setDrawer(null)}><aside className="drawer" onClick={e=>e.stopPropagation()}><button className="close" onClick={()=>setDrawer(null)}>×</button><h2>{drawer==='cart'?'🛒 Carrinho':'♥ Favoritos'}</h2>{(drawer==='cart'?cart:products.filter(p=>favorites.includes(p.id))).length===0?<p className="empty">Nada por aqui ainda.</p>:(drawer==='cart'?cart:products.filter(p=>favorites.includes(p.id))).map(p=><div className="drawer-item" key={p.id}><span>{p.emoji}</span><p>{p.name}<b>R$ {(p.price*(p.qty||1)).toFixed(2).replace('.',',')}</b></p>{drawer==='cart'?<div><button onClick={()=>setCart(c=>c.map(x=>x.id===p.id?{...x,qty:Math.max(1,x.qty-1)}:x))}>−</button> {p.qty} <button onClick={()=>setCart(c=>c.map(x=>x.id===p.id?{...x,qty:x.qty+1}:x))}>+</button></div>:<button onClick={()=>toggle(p.id)}>🗑</button>}</div>)}{drawer==='cart'&&<button className="primary full" onClick={()=>navigate('checkout')}>Finalizar compra →</button>}</aside></div>}{chat&&<section className="chat"><button onClick={()=>setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}{toast&&<div className="toast">{toast}</div>}</>
+  const [page, setPage] = useState('home')
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('Todos')
+  const [sort, setSort] = useState('default')
+  const [favorites, setFavorites] = useState(read('acheii_wish'))
+  const [cart, setCart] = useState(read('acheii_cart'))
+  const [selected, setSelected] = useState(null)
+  const [drawer, setDrawer] = useState(null)
+  const [payment, setPayment] = useState('Cartão de crédito')
+  const [toast, setToast] = useState('')
+  const [chat, setChat] = useState(false)
+
+  useEffect(() => localStorage.setItem('acheii_wish', JSON.stringify(favorites)), [favorites])
+  useEffect(() => localStorage.setItem('acheii_cart', JSON.stringify(cart)), [cart])
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(''), 2600)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  const visible = useMemo(() => products
+    .filter(p => (category === 'Todos' || p.category === category) && (`${p.name} ${p.category}`.toLowerCase().includes(query.toLowerCase())))
+    .sort((a, b) => sort === 'price-asc' ? a.price - b.price : sort === 'price-desc' ? b.price - a.price : sort === 'rating' ? b.rating - a.rating : 0), [query, category, sort])
+
+  const navigate = nextPage => {
+    setPage(nextPage)
+    setDrawer(null)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+  const openSearch = () => {
+    navigate('home')
+    setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+  const add = product => {
+    setCart(items => {
+      const item = items.find(x => x.id === product.id)
+      return item ? items.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x) : [...items, { ...product, qty: 1 }]
+    })
+    setToast(`${product.emoji} Adicionado ao carrinho!`)
+  }
+  const open = product => { setSelected(product); navigate('product') }
+  const toggle = id => setFavorites(items => items.includes(id) ? items.filter(x => x !== id) : [...items, id])
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
+  const selectCategory = value => {
+    setCategory(value)
+    navigate('home')
+    setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100)
+  }
+
+  const content = page === 'home'
+    ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} />
+    : page === 'product'
+      ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('home')} onSeller={() => navigate('seller')} />
+      : page === 'seller'
+        ? <Seller products={products} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
+        : page === 'checkout'
+          ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={() => { setCart([]); setToast('✅ Pedido confirmado!'); navigate('track') }} />
+          : page === 'track'
+            ? <Track />
+            : <Auth onLogin={() => { setToast('✅ Login realizado!'); navigate('home') }} />
+
+  return (
+    <>
+      <Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={() => setDrawer('cart')} onFavorites={() => setDrawer('favorites')} />
+      {content}
+      <Footer onPage={navigate} />
+      <MobileBottomNav activePage={page} onNavigate={navigate} onSearch={openSearch} />
+      {drawer && <div className="overlay" onClick={() => setDrawer(null)}>
+        <aside className="drawer" onClick={event => event.stopPropagation()}>
+          <button className="close" onClick={() => setDrawer(null)}>×</button>
+          <h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>
+          {(drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).length === 0
+            ? <p className="empty">Nada por aqui ainda.</p>
+            : (drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}>
+              <span>{product.emoji}</span>
+              <p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>
+              {drawer === 'cart'
+                ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div>
+                : <button onClick={() => toggle(product.id)}>🗑</button>}
+            </div>)}
+          {drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}
+        </aside>
+      </div>}
+      {chat && <section className="chat"><button onClick={() => setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}
+      {toast && <div className="toast">{toast}</div>}
+    </>
+  )
 }
