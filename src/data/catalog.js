@@ -1,3 +1,16 @@
+const fitments = [
+  { make: 'Toyota', model: 'Corolla', years: ['2015','2016','2017','2018','2019','2020','2021','2022'], engines: ['1.8','2.0'] },
+  { make: 'Chevrolet', model: 'Prisma', years: ['2013','2014','2015','2016','2017','2018','2019'], engines: ['1.0','1.4'] },
+  { make: 'Volkswagen', model: 'Golf', years: ['2014','2015','2016','2017','2018','2019'], engines: ['1.6','2.0'] },
+  { make: 'Fiat', model: 'Argo', years: ['2017','2018','2019','2020','2021','2022','2023','2024'], engines: ['1.0','1.3'] },
+  { make: 'Fiat', model: 'Argo', years: ['2017','2018','2019','2020','2021','2022','2023','2024'], engines: ['1.0','1.3'] },
+  { make: 'Chevrolet', model: 'Onix', years: ['2013','2014','2015','2016','2017','2018','2019','2020'], engines: ['1.0','1.4'] },
+  { make: 'Volkswagen', model: 'Fusca', years: ['2013','2014','2015','2016','2017','2018','2019'], engines: ['2.0'] },
+  { make: 'Fiat', model: 'Argo', years: ['2017','2018','2019','2020','2021','2022','2023','2024'], engines: ['1.0','1.3'] },
+  { make: 'Chevrolet', model: 'Prisma', years: ['2013','2014','2015','2016','2017','2018','2019'], engines: ['1.0','1.4'] },
+  { make: 'Volkswagen', model: 'Gol', years: ['2013','2014','2015','2016','2017','2018','2019','2020'], engines: ['1.0','1.6'] }
+]
+
 const categoryEmoji = { Suspensão: '🔩', Freio: '🛞', Elétrico: '⚡', Arrefecimento: '❄️', Energia: '🔋', Lubrificantes: '🛢️', Filtros: '🌬️', Ignição: '✨', Motor: '⚙️' }
 
 export const products = [
@@ -11,7 +24,7 @@ export const products = [
   ['Filtro de Ar','Filtros','Filtro de ar do motor, encaixe universal.',89.9,110,'POPULAR',4.7,234,'https://images.unsplash.com/photo-1613214149922-f1809c99b414?auto=format&fit=crop&w=900&q=85'],
   ['Jogo de Velas Iridium','Ignição','Velas de alta performance, jogo com 4 unidades.',120,150,'QUALIDADE',4.8,178,'https://images.unsplash.com/photo-1493238792000-8113da705763?auto=format&fit=crop&w=900&q=85'],
   ['Correia Dentada Kit','Motor','Kit completo com tensor e correia.',450,520,'NOVO',4.6,95,'https://images.unsplash.com/photo-1502744688674-c619d1586c9e?auto=format&fit=crop&w=900&q=85']
-].map(([name,category,description,price,oldPrice,badge,rating,reviews,image], index) => ({ id:index + 1, name, category, description, price, oldPrice, badge, rating, reviews, image, emoji: categoryEmoji[category] }))
+].map(([name,category,description,price,oldPrice,badge,rating,reviews,image], index) => ({ id:index + 1, name, category, description, price, oldPrice, badge, rating, reviews, image, emoji: categoryEmoji[category], fitment: fitments[index] }))
 
 export const categories = ['Todos', ...new Set(products.map(({ category }) => category))]
 export const reviews = [
