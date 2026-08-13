@@ -11,6 +11,7 @@ import Auth from './pages/Auth.jsx'
 import Account from './pages/Account.jsx'
 import SellerDashboard from './pages/SellerDashboard.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
+import DeliverySignup from './pages/DeliverySignup.jsx'
 import { products } from './data/catalog.js'
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
@@ -70,6 +71,7 @@ export default function App() {
     : page === 'account' ? <Account onNavigate={navigate} />
     : page === 'seller-dashboard' ? <SellerDashboard onNavigate={navigate} />
     : page === 'admin-dashboard' ? <AdminDashboard />
+    : page === 'delivery' ? <DeliverySignup />
     : <Auth onLogin={role => { setToast('Acesso realizado!'); navigate(role === 'seller' ? 'seller-dashboard' : role === 'admin' ? 'admin-dashboard' : 'account') }} />
 
   return <><Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={() => setDrawer('cart')} onFavorites={() => setDrawer('favorites')} />{content}<Footer onPage={navigate} /><MobileBottomNav activePage={page === 'account' ? 'auth' : page} onNavigate={navigate} onSearch={openSearch} />
