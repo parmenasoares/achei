@@ -8,7 +8,7 @@ const fitments = [
   { make: 'Volkswagen', model: 'Fusca', years: ['2013','2014','2015','2016','2017','2018','2019'], engines: ['2.0'] },
   { make: 'Fiat', model: 'Argo', years: ['2017','2018','2019','2020','2021','2022','2023','2024'], engines: ['1.0','1.3'] },
   { make: 'Chevrolet', model: 'Prisma', years: ['2013','2014','2015','2016','2017','2018','2019'], engines: ['1.0','1.4'] },
-  { make: 'Volkswagen', model: 'Gol', years: ['2013','2014','2015','2016','2017','2018','2019','2020'], engines: ['1.0','1.6'] }
+  { make: 'Volkswagen', model: 'Gol', years: ['2013','2014','2015','2016','2017','2018','2019','2020'], engines: ['1.0','1.6'] },
   { make: 'Fiat', model: 'Uno', years: ['2010','2011','2012','2013','2014','2015','2016'], engines: ['1.0','1.4'] },
   { make: 'Chevrolet', model: 'Corsa', years: ['2009','2010','2011','2012'], engines: ['1.0','1.4','1.8'] },
   { make: 'Volkswagen', model: 'Polo', years: ['2018','2019','2020','2021','2022','2023','2024'], engines: ['1.0','1.6'] },
