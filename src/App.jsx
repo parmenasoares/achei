@@ -3,6 +3,7 @@ import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import MobileBottomNav from './components/MobileBottomNav.jsx'
 import Home from './pages/Home.jsx'
+import Search from './pages/Search.jsx'
 import Product from './pages/Product.jsx'
 import Seller from './pages/Seller.jsx'
 import Checkout from './pages/Checkout.jsx'
@@ -41,8 +42,7 @@ export default function App() {
 
   const visible = useMemo(() => catalogProducts.filter(product => {
     const fit = product.fitment
-    const rawSearch = normalize(query)
-    const expandedSearch = rawSearch.split(/\s+/).filter(Boolean).flatMap(term => [term, ...(synonyms[term] || '').split(' ')]).filter(Boolean)
+    const expandedSearch = normalize(query).split(/\s+/).filter(Boolean).flatMap(term => [term, ...(synonyms[term] || '').split(' ')]).filter(Boolean)
     const text = normalize(`${product.name} ${product.category} ${product.description} ${fit.make} ${fit.model} ${fit.engines.join(' ')}`)
     return (category === 'Todos' || product.category === category)
       && expandedSearch.every(term => text.includes(term))
@@ -52,25 +52,21 @@ export default function App() {
       && (!vehicleFilters.year || fit.years.includes(vehicleFilters.year))
       && (!vehicleFilters.engine || fit.engines.includes(vehicleFilters.engine))
   }).sort((a, b) => sort === 'price-asc' ? a.price - b.price : sort === 'price-desc' ? b.price - a.price : sort === 'rating' ? b.rating - a.rating : 0), [query, category, sort, vehicleFilters])
+
   const navigate = nextPage => { setPage(nextPage); setDrawer(null); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const openSearch = () => { navigate('home'); setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100) }
+  const openSearch = () => navigate('search')
   const add = product => { setCart(items => { const item = items.find(x => x.id === product.id); return item ? items.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x) : [...items, { ...product, qty: 1 }] }); setToast('Produto adicionado ao carrinho!') }
   const open = product => { setSelected(product); navigate('product') }
   const toggle = id => setFavorites(items => items.includes(id) ? items.filter(x => x !== id) : [...items, id])
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
-  const selectCategory = value => { setCategory(value); navigate('home'); setTimeout(() => document.getElementById('catalog')?.scrollIntoView({ behavior: 'smooth' }), 100) }
+  const selectCategory = value => { setCategory(value); navigate('search') }
 
-  const content = page === 'home' ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
-    : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('home')} onSeller={() => navigate('seller')} />
+  const content = page === 'home' ? <Home products={catalogProducts} onOpen={open} onPage={navigate} onCategory={selectCategory} />
+    : page === 'search' ? <Search products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
+    : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('search')} onSeller={() => navigate('seller')} />
     : page === 'seller' ? <Seller products={catalogProducts} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
-    : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={order => {
-      const orders = read('acheii_orders')
-      localStorage.setItem('acheii_orders', JSON.stringify([order, ...orders]))
-      setCart([])
-      setToast('Pedido confirmado! Código: ' + order.id)
-      navigate('track')
-    }} />
-    : page === 'track' ? <Track />
+    : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={order => { const orders = read('acheii_orders'); localStorage.setItem('acheii_orders', JSON.stringify([order, ...orders])); setCart([]); setToast('Pedido confirmado! Código: ' + order.id); navigate('track') }} />
+    : page === 'track' ? <Track onSearch={openSearch} />
     : page === 'account' ? <Account onNavigate={navigate} />
     : page === 'seller-dashboard' ? <SellerDashboard onNavigate={navigate} />
     : page === 'admin-dashboard' ? <AdminDashboard />
@@ -78,6 +74,6 @@ export default function App() {
     : <Auth onLogin={role => { setToast('Acesso realizado!'); navigate(role === 'seller' ? 'seller-dashboard' : role === 'admin' ? 'admin-dashboard' : 'account') }} />
 
   return <><Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={() => setDrawer('cart')} onFavorites={() => setDrawer('favorites')} />{content}<Footer onPage={navigate} /><MobileBottomNav activePage={page === 'account' ? 'auth' : page} onNavigate={navigate} onSearch={openSearch} />
-    {drawer && <div className="overlay" onClick={() => setDrawer(null)}><aside className="drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setDrawer(null)}>×</button><h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>{(drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).length === 0 ? <p className="empty">Nada por aqui ainda.</p> : (drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}><img src={product.image} alt="" /><p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>{drawer === 'cart' ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div> : <button onClick={() => toggle(product.id)}>🗑</button>}</div>)}{drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}</aside></div>}
+    {drawer && <div className="overlay" onClick={() => setDrawer(null)}><aside className="drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setDrawer(null)}>×</button><h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>{(drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).length === 0 ? <p className="empty">Nada por aqui ainda.</p> : (drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}><img src={product.image} alt="" /><p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>{drawer === 'cart' ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div> : <button onClick={() => toggle(product.id)}>🗑</button>}</div>)}{drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}</aside></div>}
     {chat && <section className="chat"><button onClick={() => setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}{toast && <div className="toast">{toast}</div>}</>
 }
