@@ -14,6 +14,8 @@ import AdminDashboard from './pages/AdminDashboard.jsx'
 import { products } from './data/catalog.js'
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
+const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const synonyms = { amortecedor: 'suspensao', suspensao: 'amortecedor', freio: 'pastilha disco', pastilha: 'freio', disco: 'freio', bateria: 'energia', oleo: 'lubrificantes motor', vela: 'ignicao', correia: 'motor', filtro: 'ar filtros', radiador: 'arrefecimento' }
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -35,9 +37,11 @@ export default function App() {
 
   const visible = useMemo(() => products.filter(product => {
     const fit = product.fitment
-    const text = `${product.name} ${product.category} ${product.description}`.toLowerCase()
+    const rawSearch = normalize(query)
+    const expandedSearch = rawSearch.split(/\s+/).filter(Boolean).flatMap(term => [term, ...(synonyms[term] || '').split(' ')]).filter(Boolean)
+    const text = normalize(`${product.name} ${product.category} ${product.description} ${fit.make} ${fit.model} ${fit.engines.join(' ')}`)
     return (category === 'Todos' || product.category === category)
-      && text.includes(query.toLowerCase())
+      && expandedSearch.every(term => text.includes(term))
       && text.includes(vehicleFilters.part.toLowerCase())
       && (!vehicleFilters.make || fit.make === vehicleFilters.make)
       && (!vehicleFilters.model || fit.model === vehicleFilters.model)
@@ -55,7 +59,13 @@ export default function App() {
   const content = page === 'home' ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
     : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('home')} onSeller={() => navigate('seller')} />
     : page === 'seller' ? <Seller products={products} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
-    : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={() => { setCart([]); setToast('Pedido confirmado!'); navigate('track') }} />
+    : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={order => {
+      const orders = read('acheii_orders')
+      localStorage.setItem('acheii_orders', JSON.stringify([order, ...orders]))
+      setCart([])
+      setToast('Pedido confirmado! Código: ' + order.id)
+      navigate('track')
+    }} />
     : page === 'track' ? <Track />
     : page === 'account' ? <Account onNavigate={navigate} />
     : page === 'seller-dashboard' ? <SellerDashboard onNavigate={navigate} />
