@@ -26,7 +26,7 @@ export default function Home({ products, category, setCategory, sort, setSort, f
             <option value="rating">Melhor avaliação</option>
           </select>
         </div>
-        <div className="products">
+        <div id="products" className="products">
           {products.length
             ? products.map(p => <ProductCard key={p.id} product={p} favorite={favorites.includes(p.id)} onFavorite={onFavorite} onOpen={onOpen} onAdd={onAdd} />)
             : <div className="empty">🔎<br />Nenhum produto encontrado.</div>}
