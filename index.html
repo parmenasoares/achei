@@ -504,7 +504,6 @@
 
     <script>
         // ==================== SUPABASE CONFIG ====================
-        // ✅ CREDENCIAIS DO PROJETO ACHEII
         const SUPABASE_URL = 'https://upcizwgxrmzluwhfqcpn.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_FBbaBkJ9FPLPTb_vjjlNew_UcrD8z2z';
 
@@ -513,20 +512,36 @@
         let cart = [];
         let selectedCategory = 'all';
 
+        // Log das credenciais
+        console.log('🔧 ACHEII Debug:');
+        console.log('URL:', SUPABASE_URL);
+        console.log('Chave (primeiros 30 chars):', SUPABASE_ANON_KEY.substring(0, 30) + '...');
+
         // Tentar conectar ao Supabase
         async function initSupabase() {
             try {
-                if (!SUPABASE_URL.includes('seu-projeto')) {
-                    const { createClient } = window.supabase;
-                    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                    console.log('✅ Supabase conectado!');
-                    await loadProductsFromSupabase();
-                } else {
-                    console.warn('⚠️ Supabase não configurado. Usando dados de demo.');
+                console.log('📡 Tentando conectar ao Supabase...');
+                
+                const { createClient } = window.supabase;
+                supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Cliente Supabase criado');
+
+                // Testar conexão
+                const { data, error } = await supabase
+                    .from('products')
+                    .select('count')
+                    .limit(1);
+
+                if (error) {
+                    console.error('❌ Erro na conexão:', error.message);
                     loadDemoProducts();
+                } else {
+                    console.log('✅ Supabase conectado com sucesso!');
+                    await loadProductsFromSupabase();
                 }
             } catch (error) {
-                console.error('❌ Erro ao conectar Supabase:', error);
+                console.error('❌ Erro fatal:', error.message);
+                console.log('⚠️ Usando modo demo');
                 loadDemoProducts();
             }
         }
@@ -534,23 +549,29 @@
         // ==================== CARREGAR PRODUTOS ====================
         async function loadProductsFromSupabase() {
             try {
+                console.log('📥 Carregando produtos do Supabase...');
                 const { data, error } = await supabase
                     .from('products')
                     .select('*')
                     .order('created_at', { ascending: false });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro ao buscar:', error);
+                    throw error;
+                }
 
+                console.log('✅ Produtos carregados:', data.length);
                 allProducts = data || [];
                 renderProducts();
                 renderFilters();
             } catch (error) {
-                console.error('Erro ao carregar produtos:', error);
+                console.error('Erro ao carregar Supabase, usando demo:', error);
                 loadDemoProducts();
             }
         }
 
         function loadDemoProducts() {
+            console.log('📦 Carregando modo demo (8 produtos)');
             allProducts = [
                 { id: 1, name: 'Amortecedor Dianteiro Premium', category: 'Suspensão', price: 289.90, badge: 'PROMOÇÃO', rating: 4.8, reviews: 143 },
                 { id: 2, name: 'Pastilha de Freio Cerâmica', category: 'Freio', price: 145.50, badge: 'POPULAR', rating: 4.9, reviews: 267 },
