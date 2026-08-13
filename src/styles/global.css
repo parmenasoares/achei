@@ -66,3 +66,17 @@
 @media(max-width:800px){.portal-title{margin-block:15px}.portal-title h2{font-size:24px}.portal-grid{grid-template-columns:1fr}.dashboard-cards.seller-cards{grid-template-columns:repeat(2,1fr)}.dashboard-cards.seller-cards article:last-child{grid-column:auto}.product-create{align-items:stretch;flex-direction:column}.profile-form{max-width:none}.management{margin-inline:-4px;padding-inline:4px}.table-head,.table-row{min-width:640px}.admin-content .portal-grid{grid-template-columns:1fr}.finance-card{min-height:135px}}
 
 /* Production rebuild: portal styles verified. */
+
+
+/* Vehicle compatibility filter */
+.vehicle-filter{margin:0 0 26px;padding:18px;border:1px solid #ff5a1f55;border-radius:16px;background:linear-gradient(135deg,#251913,#1a1c21)}
+.vehicle-filter__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.vehicle-filter__heading h3{margin:4px 0 0;font:700 22px Oswald}
+.vehicle-filter__heading small{color:var(--orange);font-size:10px;font-weight:800;letter-spacing:.7px}
+.vehicle-filter__heading button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700}
+.vehicle-filter__fields{display:grid;grid-template-columns:1.45fr repeat(4,1fr) auto;gap:10px}
+.vehicle-filter label{display:flex;flex-direction:column;gap:6px;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.25px}
+.vehicle-filter input,.vehicle-filter select{width:100%;min-height:43px;padding:10px 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface2);color:var(--text);font-size:13px}
+.vehicle-filter__submit{align-self:end;min-height:43px;padding:10px 16px;border:0;border-radius:9px;background:var(--orange);color:#fff;font-weight:800;white-space:nowrap}
+@media(max-width:800px){.vehicle-filter{padding:15px;margin-bottom:20px}.vehicle-filter__fields{grid-template-columns:1fr 1fr}.vehicle-filter__fields label:first-child{grid-column:1/-1}.vehicle-filter__submit{grid-column:1/-1;width:100%}}
+@media(max-width:380px){.vehicle-filter__fields{grid-template-columns:1fr}}
