@@ -13,6 +13,7 @@ import SellerDashboard from './pages/SellerDashboard.jsx'
 import AdminDashboard from './pages/AdminDashboard.jsx'
 import DeliverySignup from './pages/DeliverySignup.jsx'
 import { products } from './data/catalog.js'
+import { loadRemoteProducts } from './data/productRepository.js'
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
 const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -24,6 +25,7 @@ export default function App() {
   const [category, setCategory] = useState('Todos')
   const [sort, setSort] = useState('default')
   const [vehicleFilters, setVehicleFilters] = useState({ part: '', make: '', model: '', year: '', engine: '' })
+  const [catalogProducts, setCatalogProducts] = useState(products)
   const [favorites, setFavorites] = useState(read('acheii_wish'))
   const [cart, setCart] = useState(read('acheii_cart'))
   const [selected, setSelected] = useState(null)
@@ -34,9 +36,10 @@ export default function App() {
 
   useEffect(() => localStorage.setItem('acheii_wish', JSON.stringify(favorites)), [favorites])
   useEffect(() => localStorage.setItem('acheii_cart', JSON.stringify(cart)), [cart])
+  useEffect(() => { loadRemoteProducts().then(remote => { if (remote?.length) setCatalogProducts(remote) }).catch(() => {}) }, [])
   useEffect(() => { if (!toast) return; const timer = setTimeout(() => setToast(''), 2600); return () => clearTimeout(timer) }, [toast])
 
-  const visible = useMemo(() => products.filter(product => {
+  const visible = useMemo(() => catalogProducts.filter(product => {
     const fit = product.fitment
     const rawSearch = normalize(query)
     const expandedSearch = rawSearch.split(/\s+/).filter(Boolean).flatMap(term => [term, ...(synonyms[term] || '').split(' ')]).filter(Boolean)
@@ -59,7 +62,7 @@ export default function App() {
 
   const content = page === 'home' ? <Home products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onPage={navigate} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
     : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('home')} onSeller={() => navigate('seller')} />
-    : page === 'seller' ? <Seller products={products} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
+    : page === 'seller' ? <Seller products={catalogProducts} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
     : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={order => {
       const orders = read('acheii_orders')
       localStorage.setItem('acheii_orders', JSON.stringify([order, ...orders]))
@@ -75,6 +78,6 @@ export default function App() {
     : <Auth onLogin={role => { setToast('Acesso realizado!'); navigate(role === 'seller' ? 'seller-dashboard' : role === 'admin' ? 'admin-dashboard' : 'account') }} />
 
   return <><Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={() => setDrawer('cart')} onFavorites={() => setDrawer('favorites')} />{content}<Footer onPage={navigate} /><MobileBottomNav activePage={page === 'account' ? 'auth' : page} onNavigate={navigate} onSearch={openSearch} />
-    {drawer && <div className="overlay" onClick={() => setDrawer(null)}><aside className="drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setDrawer(null)}>×</button><h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>{(drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).length === 0 ? <p className="empty">Nada por aqui ainda.</p> : (drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}><img src={product.image} alt="" /><p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>{drawer === 'cart' ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div> : <button onClick={() => toggle(product.id)}>🗑</button>}</div>)}{drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}</aside></div>}
+    {drawer && <div className="overlay" onClick={() => setDrawer(null)}><aside className="drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setDrawer(null)}>×</button><h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>{(drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).length === 0 ? <p className="empty">Nada por aqui ainda.</p> : (drawer === 'cart' ? cart : products.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}><img src={product.image} alt="" /><p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>{drawer === 'cart' ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div> : <button onClick={() => toggle(product.id)}>🗑</button>}</div>)}{drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}</aside></div>}
     {chat && <section className="chat"><button onClick={() => setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}{toast && <div className="toast">{toast}</div>}</>
 }
