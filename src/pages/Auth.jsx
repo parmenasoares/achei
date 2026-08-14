@@ -58,18 +58,49 @@ const isValidPixKey = value => {
   return isValidCpf(digits) || isValidCnpj(digits) || email.test(key) || evp.test(key) || phone
 }
 
+// Componente de input de senha com toggle de visibilidade
+function PasswordInput({ value, onChange, placeholder, name, autoComplete }) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="password-wrap">
+      <input
+        name={name}
+        value={value}
+        onChange={onChange}
+        type={visible ? 'text' : 'password'}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        minLength="8"
+      />
+      <button
+        type="button"
+        className="password-toggle"
+        onClick={() => setVisible(v => !v)}
+        aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'}
+        tabIndex={-1}
+      >
+        {visible ? '🙈' : '👁️'}
+      </button>
+    </div>
+  )
+}
+
 export default function Auth({ onLogin }) {
   const [tab, setTab] = useState('login')
   const [accountType, setAccountType] = useState('buyer')
   const [sellerStep, setSellerStep] = useState(1)
-  const [login, setLogin] = useState({ identifier:'', password:'' })
+  const [login, setLogin] = useState({ identifier: '', password: '' })
+  const [showLoginPass, setShowLoginPass] = useState(false)
+  const [forgotMode, setForgotMode] = useState(false)
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotSent, setForgotSent] = useState(false)
   const [form, setForm] = useState({ fullName:'', businessName:'', email:'', phone:'', cpf:'', cnpj:'', pixKey:'', storePostalCode:'', storeAddress:'', storeNumber:'', storeComplement:'', storeNeighborhood:'', storeCity:'', storeState:'', password:'', confirmPassword:'', accepted:false, categories:[] })
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const change = event => setForm(current => ({ ...current, [event.target.name]: event.target.type === 'checkbox' ? event.target.checked : normalizeFieldValue(event.target.name, event.target.value) }))
-  const switchTab = value => { setTab(value); setMessage(''); setSellerStep(1) }
+  const switchTab = value => { setTab(value); setMessage(''); setSellerStep(1); setForgotMode(false) }
   const chooseType = type => { setAccountType(type); setSellerStep(1); setMessage('') }
-  const toggleCategory = category => setForm(current => ({ ...current, categories:current.categories.includes(category) ? current.categories.filter(item => item !== category) : [...current.categories, category] }))
+  const toggleCategory = category => setForm(current => ({ ...current, categories: current.categories.includes(category) ? current.categories.filter(item => item !== category) : [...current.categories, category] }))
 
   const signIn = async event => {
     event.preventDefault()
@@ -80,14 +111,14 @@ export default function Auth({ onLogin }) {
     let user
     let error
     if (identifier.includes('@')) {
-      const response = await supabase.auth.signInWithPassword({ email:identifier.toLowerCase(), password:login.password })
+      const response = await supabase.auth.signInWithPassword({ email: identifier.toLowerCase(), password: login.password })
       user = response.data.user
       error = response.error
     } else {
-      const response = await supabase.functions.invoke('sign-in-with-identifier', { body:{ identifier, password:login.password } })
+      const response = await supabase.functions.invoke('sign-in-with-identifier', { body: { identifier, password: login.password } })
       error = response.error
       if (!error && response.data?.access_token) {
-        const session = await supabase.auth.setSession({ access_token:response.data.access_token, refresh_token:response.data.refresh_token })
+        const session = await supabase.auth.setSession({ access_token: response.data.access_token, refresh_token: response.data.refresh_token })
         error = session.error
         user = session.data.user
       } else if (!error) error = new Error('Não foi possível iniciar a sessão.')
@@ -97,6 +128,19 @@ export default function Auth({ onLogin }) {
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
     const role = profile?.role === 'admin' ? 'admin' : profile?.role === 'seller' ? 'seller' : 'buyer'
     onLogin(role)
+  }
+
+  const sendForgot = async event => {
+    event.preventDefault()
+    if (!isValidEmail(forgotEmail)) return setMessage('Informe um e-mail válido.')
+    setBusy(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail.trim().toLowerCase(), {
+      redirectTo: `${window.location.origin}?reset=1`,
+    })
+    setBusy(false)
+    if (error) return setMessage('Não foi possível enviar o e-mail. Tente novamente.')
+    setForgotSent(true)
+    setMessage('')
   }
 
   const nextSellerStep = () => {
@@ -126,21 +170,23 @@ export default function Auth({ onLogin }) {
     if (!form.accepted) return setMessage('Aceite os termos para concluir seu cadastro.')
     setBusy(true)
     const { data, error } = await supabase.auth.signUp({
-      email:form.email.trim().toLowerCase(), password:form.password,
-      options:{ emailRedirectTo:window.location.origin, data:{
-        full_name:form.fullName.trim(), account_type:accountType, phone:toBrazilPhone(form.phone),
-        cpf:accountType === 'buyer' ? document : null, cnpj:accountType === 'seller' ? document : null,
-        business_name:accountType === 'seller' ? form.businessName.trim() : null,
-        pix_key:accountType === 'seller' ? form.pixKey.trim() : null,
-        store_postal_code:accountType === 'seller' ? cleanDigits(form.storePostalCode) : null,
-        store_address:accountType === 'seller' ? form.storeAddress.trim() : null,
-        store_number:accountType === 'seller' ? form.storeNumber.trim() : null,
-        store_complement:accountType === 'seller' ? form.storeComplement.trim() : null,
-        store_neighborhood:accountType === 'seller' ? form.storeNeighborhood.trim() : null,
-        store_city:accountType === 'seller' ? form.storeCity.trim() : null,
-        store_state:accountType === 'seller' ? form.storeState.trim().toUpperCase() : null,
-        business_categories:accountType === 'seller' ? form.categories : []
-      }}
+      email: form.email.trim().toLowerCase(), password: form.password,
+      options: {
+        emailRedirectTo: window.location.origin, data: {
+          full_name: form.fullName.trim(), account_type: accountType, phone: toBrazilPhone(form.phone),
+          cpf: accountType === 'buyer' ? document : null, cnpj: accountType === 'seller' ? document : null,
+          business_name: accountType === 'seller' ? form.businessName.trim() : null,
+          pix_key: accountType === 'seller' ? form.pixKey.trim() : null,
+          store_postal_code: accountType === 'seller' ? cleanDigits(form.storePostalCode) : null,
+          store_address: accountType === 'seller' ? form.storeAddress.trim() : null,
+          store_number: accountType === 'seller' ? form.storeNumber.trim() : null,
+          store_complement: accountType === 'seller' ? form.storeComplement.trim() : null,
+          store_neighborhood: accountType === 'seller' ? form.storeNeighborhood.trim() : null,
+          store_city: accountType === 'seller' ? form.storeCity.trim() : null,
+          store_state: accountType === 'seller' ? form.storeState.trim().toUpperCase() : null,
+          business_categories: accountType === 'seller' ? form.categories : []
+        }
+      }
     })
     setBusy(false)
     if (error) return setMessage(error.message)
@@ -148,9 +194,150 @@ export default function Auth({ onLogin }) {
     onLogin(accountType === 'seller' ? 'seller' : 'buyer')
   }
 
-  const credentials = <><label>Senha<input required name="password" value={form.password} onChange={change} type="password" minLength="8" placeholder="Mínimo 8 caracteres" autoComplete="new-password" /></label><label>Confirmar senha<input required name="confirmPassword" value={form.confirmPassword} onChange={change} type="password" minLength="8" placeholder="Repita sua senha" autoComplete="new-password" /></label></>
-  const sellerProgress = <div className="seller-progress" aria-label={`Etapa ${sellerStep} de 4`}>{['Dados da empresa','Endereço','Categorias','Segurança'].map((label,index) => <div className={sellerStep >= index + 1 ? 'active' : ''} key={label}><b>{index + 1}</b><span>{label}</span></div>)}</div>
-  const storeAddressFields = { cep:'storePostalCode', street:'storeAddress', number:'storeNumber', complement:'storeComplement', neighborhood:'storeNeighborhood', city:'storeCity', state:'storeState' }
+  const credentials = (
+    <>
+      <label>
+        Senha
+        <PasswordInput name="password" value={form.password} onChange={change} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+      </label>
+      <label>
+        Confirmar senha
+        <PasswordInput name="confirmPassword" value={form.confirmPassword} onChange={change} placeholder="Repita sua senha" autoComplete="new-password" />
+      </label>
+    </>
+  )
 
-  return <main className="auth auth-flow"><section><div className="logo">🔥 ACHEI</div><p>Seu marketplace automotivo favorito</p><div className="tabs"><button className={tab === 'login' ? 'active' : ''} onClick={() => switchTab('login')}>Entrar</button><button className={tab === 'register' ? 'active' : ''} onClick={() => switchTab('register')}>Cadastrar</button></div>{tab === 'login' ? <form onSubmit={signIn}><label>E-mail, telefone ou CNPJ<input value={login.identifier} onChange={event => setLogin(current => ({ ...current, identifier:event.target.value }))} placeholder="E-mail, telefone ou CNPJ" autoComplete="username" /></label><label>Senha<input value={login.password} onChange={event => setLogin(current => ({ ...current, password:event.target.value }))} type="password" placeholder="••••••••" autoComplete="current-password" /></label><p className="auth-help">Use o e-mail confirmado ou telefone vinculado à sua conta.</p>{message && <p className="auth-message" role="status">{message}</p>}<button className="primary" disabled={busy} type="submit">{busy ? 'Entrando...' : 'Entrar →'}</button></form> : <form onSubmit={register}><div className="account-type"><button type="button" className={accountType === 'buyer' ? 'active' : ''} onClick={() => chooseType('buyer')}><span>🛒</span><b>Sou comprador</b><small>Quero comprar peças</small></button><button type="button" className={accountType === 'seller' ? 'active' : ''} onClick={() => chooseType('seller')}><span>🏪</span><b>Sou empresa / lojista</b><small>Quero vender peças</small></button></div>{accountType === 'seller' ? <><h2>Cadastro da empresa</h2>{sellerProgress}<div className="step-panel" key={sellerStep}>{sellerStep === 1 && <div className="auth-fields"><label>Responsável pela conta<input required name="fullName" value={form.fullName} onChange={change} placeholder="Seu nome" /></label><label>Razão social ou nome da loja<input required name="businessName" value={form.businessName} onChange={change} placeholder="Nome da empresa" /></label><label>E-mail corporativo<input required name="email" value={form.email} onChange={change} type="email" placeholder="voce@empresa.com.br" /></label><label>Telefone com DDD<input required name="phone" value={form.phone} onChange={change} type="tel" placeholder="(21) 99999-9999" /></label><label>CNPJ<input required name="cnpj" value={form.cnpj} onChange={change} inputMode="numeric" placeholder="00.000.000/0000-00" /></label><label>Chave PIX<input required name="pixKey" value={form.pixKey} onChange={change} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" /></label></div>}{sellerStep === 2 && <AddressFields inline className="auth-fields store-address-fields" value={form} onChange={setForm} fields={storeAddressFields} />}{sellerStep === 3 && <div className="category-picker"><p>Com o que a sua empresa trabalha?</p><small>Selecione uma ou mais categorias.</small><div>{categories.map(category => <button type="button" className={form.categories.includes(category) ? 'active' : ''} onClick={() => toggleCategory(category)} key={category}>{form.categories.includes(category) ? '✓ ' : ''}{category}</button>)}</div></div>}{sellerStep === 4 && <div className="auth-fields">{credentials}</div>}</div>{sellerStep === 4 && <><label className="terms"><input required name="accepted" checked={form.accepted} onChange={change} type="checkbox" />Li e aceito os termos e a política de privacidade.</label><p className="auth-help">Enviaremos um link para validar o seu e-mail. A empresa só poderá vender após essa confirmação.</p></>}{message && <p className="auth-message" role="status">{message}</p>}<div className="step-actions">{sellerStep > 1 && <button type="button" onClick={() => { setSellerStep(step => step - 1); setMessage('') }}>Voltar</button>}{sellerStep < 4 ? <button type="button" className="primary" onClick={nextSellerStep}>Continuar →</button> : <button className="primary" disabled={busy} type="submit">{busy ? 'Criando cadastro...' : 'Criar conta de lojista →'}</button>}</div></> : <><h2>Cadastro do comprador</h2><div className="auth-fields"><label>Nome completo<input required name="fullName" value={form.fullName} onChange={change} placeholder="Seu nome" /></label><label>E-mail<input required name="email" value={form.email} onChange={change} type="email" placeholder="voce@email.com" /></label><label>Telefone com DDD<input required name="phone" value={form.phone} onChange={change} type="tel" placeholder="(21) 99999-9999" /></label><label>CPF<input required name="cpf" value={form.cpf} onChange={change} inputMode="numeric" placeholder="000.000.000-00" /></label>{credentials}</div><label className="terms"><input required name="accepted" checked={form.accepted} onChange={change} type="checkbox" />Li e aceito os termos e a política de privacidade.</label><p className="auth-help">Após o cadastro, enviaremos um link para validar o seu e-mail. A conta só poderá comprar após essa confirmação.</p>{message && <p className="auth-message" role="status">{message}</p>}<button className="primary" disabled={busy} type="submit">{busy ? 'Criando cadastro...' : 'Criar conta de comprador →'}</button></>}</form>}</section></main>
+  const sellerProgress = (
+    <div className="seller-progress" aria-label={`Etapa ${sellerStep} de 4`}>
+      {['Dados da empresa', 'Endereço', 'Categorias', 'Segurança'].map((label, index) => (
+        <div className={sellerStep >= index + 1 ? 'active' : ''} key={label}>
+          <b>{index + 1}</b><span>{label}</span>
+        </div>
+      ))}
+    </div>
+  )
+
+  const storeAddressFields = { cep: 'storePostalCode', street: 'storeAddress', number: 'storeNumber', complement: 'storeComplement', neighborhood: 'storeNeighborhood', city: 'storeCity', state: 'storeState' }
+
+  // Tela de esqueci a senha
+  if (forgotMode) {
+    return (
+      <main className="auth auth-flow">
+        <section>
+          <div className="logo">🔥 ACHEI</div>
+          <h2>Recuperar senha</h2>
+          {forgotSent ? (
+            <>
+              <p className="auth-help">✅ Enviamos um link de recuperação para <strong>{forgotEmail}</strong>. Verifique sua caixa de entrada e spam.</p>
+              <button className="primary" style={{ marginTop: 16 }} onClick={() => { setForgotMode(false); setForgotSent(false); setForgotEmail('') }}>Voltar para o login</button>
+            </>
+          ) : (
+            <form onSubmit={sendForgot}>
+              <p className="auth-help">Informe o e-mail cadastrado e enviaremos um link para redefinir sua senha.</p>
+              <label>
+                E-mail
+                <input type="email" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)} placeholder="voce@email.com" autoComplete="email" required />
+              </label>
+              {message && <p className="auth-message" role="status">{message}</p>}
+              <button className="primary" disabled={busy} type="submit">{busy ? 'Enviando...' : 'Enviar link de recuperação'}</button>
+              <button type="button" className="secondary" style={{ marginTop: 10 }} onClick={() => { setForgotMode(false); setMessage('') }}>Voltar</button>
+            </form>
+          )}
+        </section>
+      </main>
+    )
+  }
+
+  return (
+    <main className="auth auth-flow">
+      <section>
+        <div className="logo">🔥 ACHEI</div>
+        <p>Seu marketplace automotivo favorito</p>
+        <div className="tabs">
+          <button className={tab === 'login' ? 'active' : ''} onClick={() => switchTab('login')}>Entrar</button>
+          <button className={tab === 'register' ? 'active' : ''} onClick={() => switchTab('register')}>Cadastrar</button>
+        </div>
+
+        {tab === 'login' ? (
+          <form onSubmit={signIn}>
+            <label>
+              E-mail, telefone ou CNPJ
+              <input value={login.identifier} onChange={event => setLogin(current => ({ ...current, identifier: event.target.value }))} placeholder="E-mail, telefone ou CNPJ" autoComplete="username" />
+            </label>
+            <label>
+              Senha
+              <div className="password-wrap">
+                <input
+                  value={login.password}
+                  onChange={event => setLogin(current => ({ ...current, password: event.target.value }))}
+                  type={showLoginPass ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={() => setShowLoginPass(v => !v)}
+                  aria-label={showLoginPass ? 'Ocultar senha' : 'Mostrar senha'}
+                  tabIndex={-1}
+                >
+                  {showLoginPass ? '🙈' : '👁️'}
+                </button>
+              </div>
+            </label>
+            <p className="auth-help">Use o e-mail confirmado ou telefone vinculado à sua conta.</p>
+            <button
+              type="button"
+              className="forgot-link"
+              onClick={() => { setForgotMode(true); setMessage('') }}
+            >
+              Esqueci minha senha
+            </button>
+            {message && <p className="auth-message" role="status">{message}</p>}
+            <button className="primary" disabled={busy} type="submit">{busy ? 'Entrando...' : 'Entrar →'}</button>
+          </form>
+        ) : (
+          <form onSubmit={register}>
+            <div className="account-type">
+              <button type="button" className={accountType === 'buyer' ? 'active' : ''} onClick={() => chooseType('buyer')}><span>🛒</span><b>Sou comprador</b><small>Quero comprar peças</small></button>
+              <button type="button" className={accountType === 'seller' ? 'active' : ''} onClick={() => chooseType('seller')}><span>🏪</span><b>Sou empresa / lojista</b><small>Quero vender peças</small></button>
+            </div>
+            {accountType === 'seller' ? (
+              <>
+                <h2>Cadastro da empresa</h2>
+                {sellerProgress}
+                <div className="step-panel" key={sellerStep}>
+                  {sellerStep === 1 && <div className="auth-fields"><label>Responsável pela conta<input required name="fullName" value={form.fullName} onChange={change} placeholder="Seu nome" /></label><label>Razão social ou nome da loja<input required name="businessName" value={form.businessName} onChange={change} placeholder="Nome da empresa" /></label><label>E-mail corporativo<input required name="email" value={form.email} onChange={change} type="email" placeholder="voce@empresa.com.br" /></label><label>Telefone com DDD<input required name="phone" value={form.phone} onChange={change} type="tel" placeholder="(21) 99999-9999" /></label><label>CNPJ<input required name="cnpj" value={form.cnpj} onChange={change} inputMode="numeric" placeholder="00.000.000/0000-00" /></label><label>Chave PIX<input required name="pixKey" value={form.pixKey} onChange={change} placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória" /></label></div>}
+                  {sellerStep === 2 && <AddressFields inline className="auth-fields store-address-fields" value={form} onChange={setForm} fields={storeAddressFields} />}
+                  {sellerStep === 3 && <div className="category-picker"><p>Com o que a sua empresa trabalha?</p><small>Selecione uma ou mais categorias.</small><div>{categories.map(category => <button type="button" className={form.categories.includes(category) ? 'active' : ''} onClick={() => toggleCategory(category)} key={category}>{form.categories.includes(category) ? '✓ ' : ''}{category}</button>)}</div></div>}
+                  {sellerStep === 4 && <div className="auth-fields">{credentials}</div>}
+                </div>
+                {sellerStep === 4 && <><label className="terms"><input required name="accepted" checked={form.accepted} onChange={change} type="checkbox" />Li e aceito os termos e a política de privacidade.</label><p className="auth-help">Enviaremos um link para validar o seu e-mail. A empresa só poderá vender após essa confirmação.</p></>}
+                {message && <p className="auth-message" role="status">{message}</p>}
+                <div className="step-actions">
+                  {sellerStep > 1 && <button type="button" onClick={() => { setSellerStep(step => step - 1); setMessage('') }}>Voltar</button>}
+                  {sellerStep < 4 ? <button type="button" className="primary" onClick={nextSellerStep}>Continuar →</button> : <button className="primary" disabled={busy} type="submit">{busy ? 'Criando cadastro...' : 'Criar conta de lojista →'}</button>}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>Cadastro do comprador</h2>
+                <div className="auth-fields">
+                  <label>Nome completo<input required name="fullName" value={form.fullName} onChange={change} placeholder="Seu nome" /></label>
+                  <label>E-mail<input required name="email" value={form.email} onChange={change} type="email" placeholder="voce@email.com" /></label>
+                  <label>Telefone com DDD<input required name="phone" value={form.phone} onChange={change} type="tel" placeholder="(21) 99999-9999" /></label>
+                  <label>CPF<input required name="cpf" value={form.cpf} onChange={change} inputMode="numeric" placeholder="000.000.000-00" /></label>
+                  {credentials}
+                </div>
+                <label className="terms"><input required name="accepted" checked={form.accepted} onChange={change} type="checkbox" />Li e aceito os termos e a política de privacidade.</label>
+                <p className="auth-help">Após o cadastro, enviaremos um link para validar o seu e-mail. A conta só poderá comprar após essa confirmação.</p>
+                {message && <p className="auth-message" role="status">{message}</p>}
+                <button className="primary" disabled={busy} type="submit">{busy ? 'Criando cadastro...' : 'Criar conta de comprador →'}</button>
+              </>
+            )}
+          </form>
+        )}
+      </section>
+    </main>
+  )
 }
