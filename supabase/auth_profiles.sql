@@ -7,7 +7,14 @@ alter table public.profiles
   add column if not exists cnpj text,
   add column if not exists business_name text,
   add column if not exists pix_key text,
-  add column if not exists business_categories text[] not null default '{}';
+  add column if not exists business_categories text[] not null default '{}',
+  add column if not exists store_postal_code text,
+  add column if not exists store_address text,
+  add column if not exists store_number text,
+  add column if not exists store_complement text,
+  add column if not exists store_neighborhood text,
+  add column if not exists store_city text,
+  add column if not exists store_state text;
 
 do $$
 begin
@@ -29,12 +36,14 @@ declare
   requested_role text := coalesce(new.raw_user_meta_data ->> 'account_type', 'buyer');
 begin
   if requested_role not in ('buyer', 'seller') then requested_role := 'buyer'; end if;
-  insert into public.profiles (id, full_name, role, phone, email, cpf, cnpj, business_name, pix_key, business_categories)
+  insert into public.profiles (id, full_name, role, phone, email, cpf, cnpj, business_name, pix_key, store_postal_code, store_address, store_number, store_complement, store_neighborhood, store_city, store_state, business_categories)
   values (
     new.id, coalesce(new.raw_user_meta_data ->> 'full_name', ''), requested_role,
     new.raw_user_meta_data ->> 'phone', new.email,
     nullif(new.raw_user_meta_data ->> 'cpf', ''), nullif(new.raw_user_meta_data ->> 'cnpj', ''),
     nullif(new.raw_user_meta_data ->> 'business_name', ''), nullif(new.raw_user_meta_data ->> 'pix_key', ''),
+    nullif(new.raw_user_meta_data ->> 'store_postal_code', ''), nullif(new.raw_user_meta_data ->> 'store_address', ''),
+    nullif(new.raw_user_meta_data ->> 'store_number', ''), nullif(new.raw_user_meta_data ->> 'store_complement', ''), nullif(new.raw_user_meta_data ->> 'store_neighborhood', ''), nullif(new.raw_user_meta_data ->> 'store_city', ''), nullif(new.raw_user_meta_data ->> 'store_state', ''),
     coalesce(array(select jsonb_array_elements_text(coalesce(new.raw_user_meta_data -> 'business_categories', '[]'::jsonb))), '{}')
   ) on conflict (id) do nothing;
   return new;
