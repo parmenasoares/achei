@@ -5,6 +5,29 @@ import '../styles/auth-flow.css'
 
 const categories = ['Injeção Eletrônica','GNV','Ar condicionado','Elétrica','Vidros para-brisas','Vidros de portas','Vidros traseiros','Suspensão','Insulfilm','Borrachas','Acessórios','Baterias','Pneus']
 const cleanDigits = value => value.replace(/\D/g, '')
+const formatCpf = value => cleanDigits(value).slice(0, 11).replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2')
+const formatCnpj = value => cleanDigits(value).slice(0, 14).replace(/^(\d{2})(\d)/, '$1.$2').replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3').replace(/\.(\d{3})(\d)/, '.$1/$2').replace(/(\d{4})(\d)/, '$1-$2')
+const formatPhone = value => {
+  const digits = cleanDigits(value).slice(0, 11)
+  if (digits.length <= 2) return digits
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+const formatCep = value => cleanDigits(value).slice(0, 8).replace(/^(\d{5})(\d)/, '$1-$2')
+const isValidEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+const isValidPhone = value => {
+  const digits = cleanDigits(value)
+  return /^\d{10,11}$/.test(digits) && !/^(\d)\1+$/.test(digits)
+}
+const normalizeFieldValue = (name, value) => {
+  if (name === 'cpf') return formatCpf(value)
+  if (name === 'cnpj') return formatCnpj(value)
+  if (name === 'phone') return formatPhone(value)
+  if (name === 'storePostalCode') return formatCep(value)
+  if (name === 'storeState') return value.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2)
+  return value
+}
 const toBrazilPhone = value => { const digits = cleanDigits(value); return digits.startsWith('55') ? `+${digits}` : `+55${digits}` }
 const isValidCpf = value => {
   const digits = cleanDigits(value)
@@ -43,7 +66,7 @@ export default function Auth({ onLogin }) {
   const [form, setForm] = useState({ fullName:'', businessName:'', email:'', phone:'', cpf:'', cnpj:'', pixKey:'', storePostalCode:'', storeAddress:'', storeNumber:'', storeComplement:'', storeNeighborhood:'', storeCity:'', storeState:'', password:'', confirmPassword:'', accepted:false, categories:[] })
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
-  const change = event => setForm(current => ({ ...current, [event.target.name]: event.target.type === 'checkbox' ? event.target.checked : event.target.value }))
+  const change = event => setForm(current => ({ ...current, [event.target.name]: event.target.type === 'checkbox' ? event.target.checked : normalizeFieldValue(event.target.name, event.target.value) }))
   const switchTab = value => { setTab(value); setMessage(''); setSellerStep(1) }
   const chooseType = type => { setAccountType(type); setSellerStep(1); setMessage('') }
   const toggleCategory = category => setForm(current => ({ ...current, categories:current.categories.includes(category) ? current.categories.filter(item => item !== category) : [...current.categories, category] }))
@@ -77,7 +100,9 @@ export default function Auth({ onLogin }) {
   }
 
   const nextSellerStep = () => {
-    if (sellerStep === 1 && (!form.fullName.trim() || !form.businessName.trim() || !form.email.trim() || cleanDigits(form.phone).length < 10 || !form.cnpj.trim() || !form.pixKey.trim())) return setMessage('Preencha todos os dados da empresa antes de continuar.')
+    if (sellerStep === 1 && (!form.fullName.trim() || !form.businessName.trim() || !form.email.trim() || !form.phone.trim() || !form.cnpj.trim() || !form.pixKey.trim())) return setMessage('Preencha todos os dados da empresa antes de continuar.')
+    if (sellerStep === 1 && !isValidEmail(form.email)) return setMessage('Informe um e-mail corporativo válido.')
+    if (sellerStep === 1 && !isValidPhone(form.phone)) return setMessage('Informe um telefone válido com DDD.')
     if (sellerStep === 1 && !isValidCnpj(form.cnpj)) return setMessage('Informe um CNPJ válido.')
     if (sellerStep === 1 && !isValidPixKey(form.pixKey)) return setMessage('Informe uma chave PIX válida: CPF, CNPJ, e-mail, telefone ou chave aleatória.')
     if (sellerStep === 2 && (!cleanDigits(form.storePostalCode).match(/^\d{8}$/) || !form.storeAddress.trim() || !form.storeNumber.trim() || !form.storeNeighborhood.trim() || !form.storeCity.trim() || form.storeState.length !== 2)) return setMessage('Preencha o endereço completo da loja, incluindo CEP, cidade e UF.')
@@ -89,7 +114,9 @@ export default function Auth({ onLogin }) {
   const register = async event => {
     event.preventDefault()
     const document = accountType === 'seller' ? cleanDigits(form.cnpj) : cleanDigits(form.cpf)
-    if (!form.fullName.trim() || !form.email.trim() || cleanDigits(form.phone).length < 10 || !document || !form.password) return setMessage('Preencha todos os campos obrigatórios.')
+    if (!form.fullName.trim() || !form.email.trim() || !form.phone.trim() || !document || !form.password) return setMessage('Preencha todos os campos obrigatórios.')
+    if (!isValidEmail(form.email)) return setMessage('Informe um e-mail válido.')
+    if (!isValidPhone(form.phone)) return setMessage('Informe um telefone válido com DDD.')
     if (accountType === 'seller' && (!form.businessName.trim() || !form.pixKey.trim() || !form.storeAddress.trim() || !form.storeCity.trim() || !form.storeState.trim() || !form.categories.length)) return setMessage('Informe os dados da empresa, endereço e pelo menos uma categoria de atuação.')
     if (accountType === 'buyer' && !isValidCpf(document)) return setMessage('Informe um CPF válido.')
     if (accountType === 'seller' && !isValidCnpj(document)) return setMessage('Informe um CNPJ válido.')
