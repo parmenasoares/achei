@@ -42,7 +42,9 @@ export default function Auth({ onLogin }) {
     }
     setBusy(false)
     if (error) return setMessage('Dados de acesso inválidos ou e-mail ainda não confirmado.')
-    onLogin(user?.user_metadata?.account_type === 'seller' ? 'seller' : 'buyer')
+    const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).maybeSingle()
+    const role = profile?.role === 'admin' ? 'admin' : profile?.role === 'seller' ? 'seller' : 'buyer'
+    onLogin(role)
   }
 
   const nextSellerStep = () => {
