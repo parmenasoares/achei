@@ -5,6 +5,34 @@ import '../styles/auth-flow.css'
 const categories = ['Injeção Eletrônica','GNV','Ar condicionado','Elétrica','Vidros para-brisas','Vidros de portas','Vidros traseiros','Suspensão','Insulfilm','Borrachas','Acessórios','Baterias','Pneus']
 const cleanDigits = value => value.replace(/\D/g, '')
 const toBrazilPhone = value => { const digits = cleanDigits(value); return digits.startsWith('55') ? `+${digits}` : `+55${digits}` }
+const isValidCpf = value => {
+  const digits = cleanDigits(value)
+  if (!/^\d{11}$/.test(digits) || /^(\d)\1{10}$/.test(digits)) return false
+  const digit = length => {
+    const sum = digits.slice(0, length).split('').reduce((total, item, index) => total + Number(item) * (length + 1 - index), 0)
+    const rest = (sum * 10) % 11
+    return rest === 10 ? 0 : rest
+  }
+  return digit(9) === Number(digits[9]) && digit(10) === Number(digits[10])
+}
+const isValidCnpj = value => {
+  const digits = cleanDigits(value)
+  if (!/^\d{14}$/.test(digits) || /^(\d)\1{13}$/.test(digits)) return false
+  const digit = weights => {
+    const sum = weights.reduce((total, weight, index) => total + Number(digits[index]) * weight, 0)
+    const rest = sum % 11
+    return rest < 2 ? 0 : 11 - rest
+  }
+  return digit([5,4,3,2,9,8,7,6,5,4,3,2]) === Number(digits[12]) && digit([6,5,4,3,2,9,8,7,6,5,4,3,2]) === Number(digits[13])
+}
+const isValidPixKey = value => {
+  const key = value.trim()
+  const digits = cleanDigits(key)
+  const email = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const evp = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  const phone = /^\+?55\d{10,11}$/.test(key.replace(/[\s()-]/g, '')) || /^\d{10,11}$/.test(digits)
+  return isValidCpf(digits) || isValidCnpj(digits) || email.test(key) || evp.test(key) || phone
+}
 
 export default function Auth({ onLogin }) {
   const [tab, setTab] = useState('login')
@@ -48,7 +76,9 @@ export default function Auth({ onLogin }) {
   }
 
   const nextSellerStep = () => {
-    if (sellerStep === 1 && (!form.fullName.trim() || !form.businessName.trim() || !form.email.trim() || cleanDigits(form.phone).length < 10 || cleanDigits(form.cnpj).length !== 14 || !form.pixKey.trim())) return setMessage('Preencha todos os dados da empresa antes de continuar.')
+    if (sellerStep === 1 && (!form.fullName.trim() || !form.businessName.trim() || !form.email.trim() || cleanDigits(form.phone).length < 10 || !form.cnpj.trim() || !form.pixKey.trim())) return setMessage('Preencha todos os dados da empresa antes de continuar.')
+    if (sellerStep === 1 && !isValidCnpj(form.cnpj)) return setMessage('Informe um CNPJ válido.')
+    if (sellerStep === 1 && !isValidPixKey(form.pixKey)) return setMessage('Informe uma chave PIX válida: CPF, CNPJ, e-mail, telefone ou chave aleatória.')
     if (sellerStep === 2 && (!cleanDigits(form.storePostalCode).match(/^\\d{8}$/) || !form.storeAddress.trim() || !form.storeNumber.trim() || !form.storeNeighborhood.trim() || !form.storeCity.trim() || form.storeState.length !== 2)) return setMessage('Preencha o endereço completo da loja, incluindo CEP, cidade e UF.')
     if (sellerStep === 3 && !form.categories.length) return setMessage('Selecione pelo menos uma categoria de atuação.')
     setMessage('')
@@ -60,8 +90,9 @@ export default function Auth({ onLogin }) {
     const document = accountType === 'seller' ? cleanDigits(form.cnpj) : cleanDigits(form.cpf)
     if (!form.fullName.trim() || !form.email.trim() || cleanDigits(form.phone).length < 10 || !document || !form.password) return setMessage('Preencha todos os campos obrigatórios.')
     if (accountType === 'seller' && (!form.businessName.trim() || !form.pixKey.trim() || !form.storeAddress.trim() || !form.storeCity.trim() || !form.storeState.trim() || !form.categories.length)) return setMessage('Informe os dados da empresa, endereço e pelo menos uma categoria de atuação.')
-    if (accountType === 'buyer' && document.length !== 11) return setMessage('Informe um CPF com 11 números.')
-    if (accountType === 'seller' && document.length !== 14) return setMessage('Informe um CNPJ com 14 números.')
+    if (accountType === 'buyer' && !isValidCpf(document)) return setMessage('Informe um CPF válido.')
+    if (accountType === 'seller' && !isValidCnpj(document)) return setMessage('Informe um CNPJ válido.')
+    if (accountType === 'seller' && !isValidPixKey(form.pixKey)) return setMessage('Informe uma chave PIX válida: CPF, CNPJ, e-mail, telefone ou chave aleatória.')
     if (form.password.length < 8) return setMessage('A senha deve ter pelo menos 8 caracteres.')
     if (form.password !== form.confirmPassword) return setMessage('As senhas não coincidem.')
     if (!form.accepted) return setMessage('Aceite os termos para concluir seu cadastro.')
