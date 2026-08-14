@@ -3,7 +3,7 @@ import { useState } from 'react'
 const demoUsers = [
   { role: 'buyer', label: 'Comprador', email: 'comprador@achei.demo', password: 'Comprador123!' },
   { role: 'seller', label: 'Vendedor', email: 'vendedor@achei.demo', password: 'Vendedor123!' },
-  { role: 'admin', label: 'Super admin', email: 'admin@achei.demo', password: 'Admin123!' }
+  { role: 'admin', label: 'Super admin', email: 'suport.acheii@gmail.com', password: '985566Wr' }
 ]
 
 export default function Auth({ onLogin }) {
