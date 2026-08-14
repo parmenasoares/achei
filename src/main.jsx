@@ -5,6 +5,7 @@ import './styles/global.css'
 import './styles/auth-flow.css'
 import './styles/seller-registration.css'
 import './styles/address.css'
+import './styles/mobile-performance.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
