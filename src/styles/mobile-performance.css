@@ -1,0 +1,14 @@
+@media (max-width:800px){
+  html{scroll-behavior:auto}
+  header{backdrop-filter:none;-webkit-backdrop-filter:none;background:#0f1013}
+  .hero{background:#14161a}
+  .hero-inner{min-height:520px}
+  .hero-art{box-shadow:none;background:#20232a}
+  .product-card,.store-card{transition:none}
+  .product-card:hover,.store-card:hover{transform:none}
+  .product-card{content-visibility:auto;contain-intrinsic-size:360px;contain:layout paint style}
+  .product-image>img{content-visibility:auto}
+  .drawer,.chat,.toast,.mobile-bottom-nav{box-shadow:none}
+  .overlay{background:#0007}
+  .loading-page{min-height:45vh;display:grid;place-items:center;color:var(--muted)}
+}
