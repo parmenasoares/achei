@@ -25,11 +25,24 @@ export default function Auth({ onLogin }) {
     if (!identifier || !login.password) return setMessage('Informe seu e-mail ou telefone e a senha.')
     if (cleanDigits(identifier).length === 14 && !identifier.includes('@')) return setMessage('Por segurança, entre com o e-mail ou telefone vinculado à empresa. O login por CNPJ será ativado pelo serviço seguro do servidor.')
     setBusy(true)
-    const credentials = identifier.includes('@') ? { email:identifier.toLowerCase(), password:login.password } : { phone:toBrazilPhone(identifier), password:login.password }
-    const { data, error } = await supabase.auth.signInWithPassword(credentials)
+    let user
+    let error
+    if (identifier.includes('@')) {
+      const response = await supabase.auth.signInWithPassword({ email:identifier.toLowerCase(), password:login.password })
+      user = response.data.user
+      error = response.error
+    } else {
+      const response = await supabase.functions.invoke('sign-in-with-identifier', { body:{ identifier, password:login.password } })
+      error = response.error
+      if (!error && response.data?.access_token) {
+        const session = await supabase.auth.setSession({ access_token:response.data.access_token, refresh_token:response.data.refresh_token })
+        error = session.error
+        user = session.data.user
+      } else if (!error) error = new Error('Não foi possível iniciar a sessão.')
+    }
     setBusy(false)
-    if (error) return setMessage(error.message === 'Invalid login credentials' ? 'Dados de acesso inválidos ou e-mail ainda não confirmado.' : error.message)
-    onLogin(data.user?.user_metadata?.account_type === 'seller' ? 'seller' : 'buyer')
+    if (error) return setMessage('Dados de acesso inválidos ou e-mail ainda não confirmado.')
+    onLogin(user?.user_metadata?.account_type === 'seller' ? 'seller' : 'buyer')
   }
 
   const nextSellerStep = () => {
