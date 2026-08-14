@@ -1,0 +1,72 @@
+.field-note {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.role-switch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.role-switch button,
+.lookup-button {
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 10px;
+}
+
+.role-switch .active {
+  border-color: var(--orange);
+  background: #ff5a1f22;
+  color: var(--orange);
+}
+
+.lookup-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.lookup-row input {
+  flex: 1;
+}
+
+.lookup-button {
+  white-space: nowrap;
+}
+
+.address-card .form-grid {
+  margin-top: 10px;
+}
+
+.address-card.compact {
+  padding-top: 18px;
+}
+
+.address-card.compact h3 {
+  margin-bottom: 4px;
+}
+
+.address-card.compact .wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 800px) {
+  .lookup-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .lookup-button {
+    width: 100%;
+  }
+
+  .role-switch {
+    grid-template-columns: 1fr;
+  }
+}
