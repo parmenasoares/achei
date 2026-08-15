@@ -31,26 +31,26 @@ export const stores = [
 const categoryEmoji = { Suspensão: '🔩', Freio: '🛞', Elétrico: '⚡', Arrefecimento: '❄️', Energia: '🔋', Lubrificantes: '🛢️', Filtros: '🌬️', Ignição: '✨', Motor: '⚙️', Transmissão: '⚙️', Combustível: '⛽', Direção: '🧭', Iluminação: '💡', Vedação: '🔧' }
 
 export const products = [
-  ['Amortecedor Dianteiro Premium','Suspensão','Para Toyota Corolla 2015–2022. Kit dianteiro completo.',289.9,349.9,'PROMOÇÃO',4.8,143,'https://storage.googleapis.com/gpracing/catalog/341372.jpg'],
-  ['Pastilha de Freio Cerâmica','Freio','Freio traseiro de alta performance e baixo ruído.',145.5,180,'POPULAR',4.9,267,'https://www.autohausaz.com/images/SP1178.jpg'],
-  ['Alternador 80A Original','Elétrico','Para Volkswagen Golf — série completa 1.6 e 2.0.',456,520,'QUALIDADE',4.7,89,'https://productimages.biltema.com/v1/image/app/imagebyfilename/63-620_xl_1.jpg'],
-  ['Radiador de Alumínio','Arrefecimento','Universal 330mm, alta performance.',567.8,650,'NOVO',4.9,134,'https://i5.walmartimages.com/asr/27c57ce2-a332-41f9-9472-dc2c6d9e61c2.f85f41f0031fc06f058e69f21229be8c.jpeg'],
-  ['Bateria 60Ah Premium','Energia','Selada, garantia de 36 meses.',389.9,450,'CONFIÁVEL',4.6,198,'https://www.sosbatteriesdom.com/340-large_default/batterie-reconditionnee-70ah.jpg'],
-  ['Disco de Freio Ventilado','Freio','330mm ventilado, dissipação superior.',234.9,280,'TOP',4.8,112,'https://media.autodoc.de/360_photos/454352/h-preview.jpg'],
-  ['Óleo do Motor 5W-30','Lubrificantes','100% sintético, embalagem de 1 litro.',45.9,59.9,'PROMOÇÃO',4.9,567,'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=900&q=85&sat=-40'],
-  ['Filtro de Ar','Filtros','Filtro de ar do motor, encaixe universal.',89.9,110,'POPULAR',4.7,234,'https://static.summitracing.com/global/images/prod/xlarge/bch-5012ws_xl.jpg'],
-  ['Jogo de Velas Iridium','Ignição','Velas de alta performance, jogo com 4 unidades.',120,150,'QUALIDADE',4.8,178,'https://www.karacanstore.com/img/products/m50-buji-0edbff1.jpg'],
-  ['Correia Dentada Kit','Motor','Kit completo com tensor e correia.',450,520,'NOVO',4.6,95,'https://i.ebayimg.com/images/g/NFAAAOSwIY5hhGjd/s-l1200.jpg'],
-  ['Kit de Embreagem Completo','Transmissão','Disco, platô e rolamento para Fiat Uno.',639.9,720,'NOVO',4.8,76,'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?auto=format&fit=crop&w=900&q=85'],
-  ['Bomba de Combustível Flex','Combustível','Módulo completo com boia e vedação.',318.5,370,'POPULAR',4.7,121,'https://productimages.biltema.com/v1/image/app/imagebyfilename/63-620_xl_1.jpg'],
-  ['Sensor ABS Dianteiro','Elétrico','Sensor de rotação da roda com conector.',159.9,190,'QUALIDADE',4.8,64,'https://static.summitracing.com/global/images/prod/xlarge/bch-5012ws_xl.jpg'],
-  ['Coxim do Motor Hidráulico','Motor','Reduz vibrações e ruídos do motor.',249.9,295,'TOP',4.6,92,'https://storage.googleapis.com/gpracing/catalog/341372.jpg'],
-  ['Filtro de Combustível','Filtros','Filtragem eficiente para sistema de injeção.',52.9,69.9,'PROMOÇÃO',4.8,205,'https://static.summitracing.com/global/images/prod/xlarge/bch-5012ws_xl.jpg'],
-  ['Par de Faróis Principais','Iluminação','Lente cristal e encaixe original.',699.9,790,'NOVO',4.7,58,'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=900&q=85'],
-  ['Bieleta Dianteira Reforçada','Suspensão','Estabilizador com alta resistência.',79.9,99.9,'POPULAR',4.9,183,'https://storage.googleapis.com/gpracing/catalog/341372.jpg'],
-  ['Junta do Cabeçote','Vedação','Kit para reparo completo do cabeçote.',189.9,230,'QUALIDADE',4.6,44,'https://i.ebayimg.com/images/g/NFAAAOSwIY5hhGjd/s-l1200.jpg'],
-  ['Terminal de Direção','Direção','Terminal externo com porca e trava.',119.9,150,'TOP',4.8,109,'https://media.autodoc.de/360_photos/454352/h-preview.jpg'],
-  ['Kit Cabos de Ignição','Ignição','Jogo completo com 4 cabos de alta tensão.',139.9,175,'PROMOÇÃO',4.7,87,'https://www.karacanstore.com/img/products/m50-buji-0edbff1.jpg']
+  ['Amortecedor Dianteiro Premium','Suspensão','Para Toyota Corolla 2015–2022. Kit dianteiro completo.',289.9,349.9,'PROMOÇÃO',4.8,143,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Pastilha de Freio Cerâmica','Freio','Freio traseiro de alta performance e baixo ruído.',145.5,180,'POPULAR',4.9,267,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Alternador 80A Original','Elétrico','Para Volkswagen Golf — série completa 1.6 e 2.0.',456,520,'QUALIDADE',4.7,89,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Radiador de Alumínio','Arrefecimento','Universal 330mm, alta performance.',567.8,650,'NOVO',4.9,134,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Bateria 60Ah Premium','Energia','Selada, garantia de 36 meses.',389.9,450,'CONFIÁVEL',4.6,198,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Disco de Freio Ventilado','Freio','330mm ventilado, dissipação superior.',234.9,280,'TOP',4.8,112,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Óleo do Motor 5W-30','Lubrificantes','100% sintético, embalagem de 1 litro.',45.9,59.9,'PROMOÇÃO',4.9,567,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Filtro de Ar','Filtros','Filtro de ar do motor, encaixe universal.',89.9,110,'POPULAR',4.7,234,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Jogo de Velas Iridium','Ignição','Velas de alta performance, jogo com 4 unidades.',120,150,'QUALIDADE',4.8,178,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Correia Dentada Kit','Motor','Kit completo com tensor e correia.',450,520,'NOVO',4.6,95,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Kit de Embreagem Completo','Transmissão','Disco, platô e rolamento para Fiat Uno.',639.9,720,'NOVO',4.8,76,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Bomba de Combustível Flex','Combustível','Módulo completo com boia e vedação.',318.5,370,'POPULAR',4.7,121,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Sensor ABS Dianteiro','Elétrico','Sensor de rotação da roda com conector.',159.9,190,'QUALIDADE',4.8,64,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Coxim do Motor Hidráulico','Motor','Reduz vibrações e ruídos do motor.',249.9,295,'TOP',4.6,92,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Filtro de Combustível','Filtros','Filtragem eficiente para sistema de injeção.',52.9,69.9,'PROMOÇÃO',4.8,205,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Par de Faróis Principais','Iluminação','Lente cristal e encaixe original.',699.9,790,'NOVO',4.7,58,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Bieleta Dianteira Reforçada','Suspensão','Estabilizador com alta resistência.',79.9,99.9,'POPULAR',4.9,183,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Junta do Cabeçote','Vedação','Kit para reparo completo do cabeçote.',189.9,230,'QUALIDADE',4.6,44,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Terminal de Direção','Direção','Terminal externo com porca e trava.',119.9,150,'TOP',4.8,109,'https://images.unsplash.com/photo-1619642751034-765dfdf7c58e?w=600&q=80'],
+  ['Kit Cabos de Ignição','Ignição','Jogo completo com 4 cabos de alta tensão.',139.9,175,'PROMOÇÃO',4.7,87,'https://images.unsplash.com/photo-1597766353939-3b8b41f11ef3?w=600&q=80']
 ].map(([name,category,description,price,oldPrice,badge,rating,reviews,image], index) => ({ id:index + 1, name, category, description, price, oldPrice, badge, rating, reviews, image, emoji: categoryEmoji[category], fitment: fitments[index], sellerId: stores[index % stores.length].id }))
 
 export const categories = ['Todos', ...new Set(products.map(({ category }) => category))]
