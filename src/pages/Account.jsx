@@ -15,22 +15,30 @@ const EMPTY_ADDRESS = {
   city: '', state: '', reference: '', is_main: false,
 }
 
-// Preenchimento automático de CEP via ViaCEP
-const fetchCep = async (cep, setFn) => {
-  const digits = cep.replace(/\D/g, '')
-  if (digits.length !== 8) return
+// Preenchimento automático de CEP via ViaCEP — definido fora para estabilidade de referência
+async function fetchCep(digits8, setForm, setCepLoading, setMsg) {
+  if (!setCepLoading) return
+  setCepLoading(true)
   try {
-    const res = await fetch(`https://viacep.com.br/ws/${digits}/json/`)
+    const res  = await fetch(`https://viacep.com.br/ws/${digits8}/json/`)
     const data = await res.json()
-    if (data.erro) return
-    setFn(prev => ({
+    if (data.erro) {
+      setMsg('CEP não encontrado. Verifique o número informado.')
+      setCepLoading(false)
+      return
+    }
+    setForm(prev => ({
       ...prev,
       street:       data.logradouro || prev.street,
       neighborhood: data.bairro     || prev.neighborhood,
       city:         data.localidade || prev.city,
       state:        data.uf         || prev.state,
     }))
-  } catch {}
+    setMsg('')
+  } catch {
+    setMsg('Não foi possível buscar o CEP. Tente novamente.')
+  }
+  setCepLoading(false)
 }
 
 export default function Account({ onNavigate, user: propUser, onLogout }) {
@@ -49,6 +57,7 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   const [addrSaving,   setAddrSaving]   = useState(false)
   const [addrMessage,  setAddrMessage]  = useState('')
   const [confirmDel,   setConfirmDel]   = useState(null)   // id do endereço aguardando confirmação
+  const [cepLoading,   setCepLoading]   = useState(false)
 
   // Pagamentos
   const [payments,         setPayments]         = useState([])
@@ -240,127 +249,6 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   const tabs  = [['overview','Visão geral'],['orders','Meus pedidos'],['addresses','Endereços'],['payments','Pagamentos'],['profile','Perfil']]
   const title = { overview:'Minha conta', orders:'Meus pedidos', addresses:'Endereços', payments:'Pagamentos', profile:'Dados pessoais' }[section]
 
-  const addrField = (field, label, opts = {}) => (
-    <label key={field} style={opts.wide ? { gridColumn: '1/-1' } : {}}>
-      {label}
-      <input
-        value={addrForm?.[field] || ''}
-        onChange={e => {
-          const val = e.target.value
-          setAddrForm(prev => ({ ...prev, [field]: val }))
-          if (field === 'postal_code') fetchCep(val, setAddrForm)
-        }}
-        placeholder={opts.placeholder || ''}
-        maxLength={opts.maxLength}
-        style={{ width: '100%' }}
-      />
-    </label>
-  )
-
-  // ─── Formulário de endereço ───────────────────────────────────────────────
-  const AddressForm = () => (
-    <form className="panel profile-form" onSubmit={saveAddress} style={{ marginBottom: 24 }}>
-      <div className="panel-title">
-        <h2>{addrForm?.id ? 'Editar endereço' : 'Novo endereço'}</h2>
-        <button type="button" onClick={() => { setAddrForm(null); setAddrMessage('') }}>Cancelar</button>
-      </div>
-      <div className="form-grid">
-        {addrField('label',        'Apelido (ex: Casa, Trabalho)',  { wide: false, placeholder: 'Casa' })}
-        {addrField('recipient',    'Nome do destinatário',          { wide: false, placeholder: 'Opcional' })}
-        <label>
-          CEP
-          <input
-            value={addrForm?.postal_code || ''}
-            onChange={e => {
-              const val = e.target.value.replace(/\D/g,'').slice(0,8).replace(/^(\d{5})(\d)/,'$1-$2')
-              setAddrForm(prev => ({ ...prev, postal_code: val }))
-              fetchCep(val, setAddrForm)
-            }}
-            placeholder="00000-000"
-            maxLength={9}
-          />
-        </label>
-        {addrField('state',        'Estado (UF)',    { placeholder: 'SP' })}
-        {addrField('street',       'Rua / Avenida', { wide: true, placeholder: 'Rua das Flores' })}
-        {addrField('number',       'Número',        { placeholder: '123' })}
-        {addrField('complement',   'Complemento',   { placeholder: 'Apto 42, Bloco B' })}
-        {addrField('neighborhood', 'Bairro',        { placeholder: 'Centro' })}
-        {addrField('city',         'Cidade',        { placeholder: 'São Paulo' })}
-        {addrField('reference',    'Ponto de referência', { wide: true, placeholder: 'Próximo à padaria' })}
-      </div>
-      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, fontSize: 14, cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={addrForm?.is_main || false}
-          onChange={e => setAddrForm(prev => ({ ...prev, is_main: e.target.checked }))}
-          style={{ width: 16, height: 16 }}
-        />
-        Definir como endereço principal
-      </label>
-      {addrMessage && <p className="auth-message" role="alert">{addrMessage}</p>}
-      <button className="primary" type="submit" disabled={addrSaving} style={{ marginTop: 8 }}>
-        {addrSaving ? 'Salvando...' : addrForm?.id ? 'Salvar alterações' : 'Adicionar endereço'}
-      </button>
-    </form>
-  )
-
-  // ─── Card de endereço ─────────────────────────────────────────────────────
-  const AddressCard = ({ addr }) => (
-    <article className="panel address-card" style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <b>📍 {addr.label} {addr.is_main && <em>Principal</em>}</b>
-      </div>
-      {addr.recipient && <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 13 }}>{addr.recipient}</p>}
-      <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 13 }}>
-        {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` — ${addr.complement}` : ''}
-      </p>
-      <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 13 }}>
-        {addr.neighborhood ? `${addr.neighborhood} — ` : ''}{addr.city}/{addr.state}
-      </p>
-      {addr.postal_code && (
-        <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 12 }}>
-          CEP: {addr.postal_code.replace(/^(\d{5})(\d{3})$/, '$1-$2')}
-        </p>
-      )}
-      {addr.reference && (
-        <p style={{ margin: '0 0 8px', color: 'var(--muted)', fontSize: 12, fontStyle: 'italic' }}>
-          📌 {addr.reference}
-        </p>
-      )}
-
-      {/* Ações */}
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
-        {!addr.is_main && (
-          <button onClick={() => setMainAddress(addr.id)} style={{ fontSize: 12 }}>
-            Definir como principal
-          </button>
-        )}
-        <button
-          onClick={() => { setAddrForm({ ...addr }); setAddrMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
-          style={{ fontSize: 12, color: 'var(--orange)', background: 'transparent', border: '1px solid var(--orange)', borderRadius: 7, padding: '6px 12px' }}
-        >
-          ✏️ Editar
-        </button>
-        {confirmDel === addr.id ? (
-          <>
-            <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>Confirmar exclusão?</span>
-            <button onClick={() => deleteAddress(addr.id)} style={{ fontSize: 12, color: '#fff', background: 'var(--red, #e5484d)', border: 'none', borderRadius: 7, padding: '6px 12px' }}>
-              Sim, excluir
-            </button>
-            <button onClick={() => setConfirmDel(null)} style={{ fontSize: 12 }}>Cancelar</button>
-          </>
-        ) : (
-          <button
-            onClick={() => setConfirmDel(addr.id)}
-            style={{ fontSize: 12, color: 'var(--red, #e5484d)', background: 'transparent', border: '1px solid var(--red, #e5484d)', borderRadius: 7, padding: '6px 12px' }}
-          >
-            🗑️ Excluir
-          </button>
-        )}
-      </div>
-    </article>
-  )
-
   // ─── Render principal ─────────────────────────────────────────────────────
   return (
     <main className="container dashboard-page">
@@ -430,7 +318,18 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
       {/* Endereços */}
       {section === 'addresses' && (
         <>
-          {addrForm && <AddressForm />}
+          {addrForm && (
+                <AddressForm
+                  addrForm={addrForm}
+                  setAddrForm={setAddrForm}
+                  addrMessage={addrMessage}
+                  addrSaving={addrSaving}
+                  cepLoading={cepLoading}
+                  onSubmit={saveAddress}
+                  onCancel={() => { setAddrForm(null); setAddrMessage('') }}
+                  onCepLookup={raw => fetchCep(raw, setAddrForm, setCepLoading, setAddrMessage)}
+                />
+              )}
           {addrLoading
             ? <p style={{ color: 'var(--muted)', padding: '20px 0' }}>Carregando endereços...</p>
             : addresses.length === 0 && !addrForm
@@ -445,7 +344,17 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
               )
               : (
                 <section className="portal-grid">
-                  {addresses.map(addr => <AddressCard key={addr.id} addr={addr} />)}
+                  {addresses.map(addr => (
+                    <AddressCard
+                      key={addr.id}
+                      addr={addr}
+                      confirmDel={confirmDel}
+                      setConfirmDel={setConfirmDel}
+                      onEdit={a => { setAddrForm({ ...a }); setAddrMessage(''); window.scrollTo({ top: 0, behavior: 'smooth' }) }}
+                      onDelete={deleteAddress}
+                      onSetMain={setMainAddress}
+                    />
+                  ))}
                 </section>
               )
           }
@@ -564,6 +473,160 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   )
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE EXTERNO: AddressForm
+// Definido FORA do Account para evitar perda de foco nos inputs
+// ─────────────────────────────────────────────────────────────────────────────
+function AddressForm({ addrForm, setAddrForm, addrMessage, addrSaving, cepLoading, onSubmit, onCancel, onCepLookup }) {
+  const field = (name, label, opts = {}) => (
+    <label key={name} style={opts.wide ? { gridColumn: '1/-1' } : {}}>
+      {label}
+      <input
+        name={name}
+        value={addrForm[name] || ''}
+        onChange={e => setAddrForm(prev => ({ ...prev, [name]: e.target.value }))}
+        placeholder={opts.placeholder || ''}
+        maxLength={opts.maxLength}
+        autoComplete={opts.autoComplete || 'off'}
+        style={{ width: '100%' }}
+      />
+    </label>
+  )
+
+  const handleCep = e => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
+    const formatted = raw.length > 5 ? raw.replace(/^(\d{5})(\d)/, '$1-$2') : raw
+    setAddrForm(prev => ({ ...prev, postal_code: formatted }))
+    if (raw.length === 8 && onCepLookup) onCepLookup(raw)
+  }
+
+  return (
+    <form className="panel profile-form" onSubmit={onSubmit} style={{ marginBottom: 24 }}>
+      <div className="panel-title">
+        <h2>{addrForm.id ? 'Editar endereço' : 'Novo endereço'}</h2>
+        <button type="button" onClick={onCancel}>Cancelar</button>
+      </div>
+
+      <div className="form-grid">
+        {field('label',     'Apelido (ex: Casa, Trabalho)', { placeholder: 'Casa' })}
+        {field('recipient', 'Nome do destinatário',         { placeholder: 'Opcional' })}
+
+        {/* CEP com busca automática */}
+        <label style={{ position: 'relative' }}>
+          CEP
+          <input
+            name="postal_code"
+            value={addrForm.postal_code || ''}
+            onChange={handleCep}
+            placeholder="00000-000"
+            maxLength={9}
+            autoComplete="postal-code"
+            style={{ width: '100%', paddingRight: cepLoading ? 36 : undefined }}
+          />
+          {cepLoading && (
+            <span style={{
+              position: 'absolute', right: 12, bottom: 12,
+              width: 16, height: 16, border: '2px solid var(--orange)',
+              borderTopColor: 'transparent', borderRadius: '50%',
+              display: 'inline-block',
+              animation: 'spin 0.7s linear infinite',
+            }} />
+          )}
+        </label>
+
+        {field('state',        'Estado (UF)', { placeholder: 'SP', maxLength: 2 })}
+        {field('street',       'Rua / Avenida', { wide: true, placeholder: 'Rua das Flores', autoComplete: 'street-address' })}
+        {field('number',       'Número',         { placeholder: '123' })}
+        {field('complement',   'Complemento',    { placeholder: 'Apto 42, Bloco B' })}
+        {field('neighborhood', 'Bairro',          { placeholder: 'Centro' })}
+        {field('city',         'Cidade',          { placeholder: 'São Paulo', autoComplete: 'address-level2' })}
+        {field('reference',    'Ponto de referência', { wide: true, placeholder: 'Próximo à padaria' })}
+      </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, fontSize: 14, cursor: 'pointer' }}>
+        <input
+          type="checkbox"
+          checked={addrForm.is_main || false}
+          onChange={e => setAddrForm(prev => ({ ...prev, is_main: e.target.checked }))}
+          style={{ width: 16, height: 16 }}
+        />
+        Definir como endereço principal
+      </label>
+
+      {addrMessage && <p className="auth-message" role="alert">{addrMessage}</p>}
+
+      <button className="primary" type="submit" disabled={addrSaving} style={{ marginTop: 8 }}>
+        {addrSaving ? 'Salvando...' : addrForm.id ? 'Salvar alterações' : 'Adicionar endereço'}
+      </button>
+    </form>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE EXTERNO: AddressCard
+// ─────────────────────────────────────────────────────────────────────────────
+function AddressCard({ addr, onEdit, onDelete, onSetMain, confirmDel, setConfirmDel }) {
+  return (
+    <article className="panel address-card" style={{ position: 'relative' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <b>📍 {addr.label} {addr.is_main && <em>Principal</em>}</b>
+      </div>
+      {addr.recipient && (
+        <p style={{ margin: '0 0 4px', fontWeight: 600, fontSize: 13 }}>{addr.recipient}</p>
+      )}
+      <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 13 }}>
+        {addr.street}{addr.number ? `, ${addr.number}` : ''}{addr.complement ? ` — ${addr.complement}` : ''}
+      </p>
+      <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 13 }}>
+        {addr.neighborhood ? `${addr.neighborhood} — ` : ''}{addr.city}/{addr.state}
+      </p>
+      {addr.postal_code && (
+        <p style={{ margin: '0 0 4px', color: 'var(--muted)', fontSize: 12 }}>
+          CEP: {String(addr.postal_code).replace(/^(\d{5})(\d{3})$/, '$1-$2')}
+        </p>
+      )}
+      {addr.reference && (
+        <p style={{ margin: '0 0 8px', color: 'var(--muted)', fontSize: 12, fontStyle: 'italic' }}>
+          📌 {addr.reference}
+        </p>
+      )}
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+        {!addr.is_main && (
+          <button onClick={() => onSetMain(addr.id)} style={{ fontSize: 12 }}>
+            Definir como principal
+          </button>
+        )}
+        <button
+          onClick={() => onEdit(addr)}
+          style={{ fontSize: 12, color: 'var(--orange)', background: 'transparent', border: '1px solid var(--orange)', borderRadius: 7, padding: '6px 12px' }}
+        >
+          ✏️ Editar
+        </button>
+        {confirmDel === addr.id ? (
+          <>
+            <span style={{ fontSize: 12, color: 'var(--muted)', alignSelf: 'center' }}>Confirmar exclusão?</span>
+            <button
+              onClick={() => onDelete(addr.id)}
+              style={{ fontSize: 12, color: '#fff', background: 'var(--red, #e5484d)', border: 'none', borderRadius: 7, padding: '6px 12px' }}
+            >
+              Sim, excluir
+            </button>
+            <button onClick={() => setConfirmDel(null)} style={{ fontSize: 12 }}>Cancelar</button>
+          </>
+        ) : (
+          <button
+            onClick={() => setConfirmDel(addr.id)}
+            style={{ fontSize: 12, color: 'var(--red, #e5484d)', background: 'transparent', border: '1px solid var(--red, #e5484d)', borderRadius: 7, padding: '6px 12px' }}
+          >
+            🗑️ Excluir
+          </button>
+        )}
+      </div>
+    </article>
+  )
+}
+
 function PaymentBadge({ status }) {
   const map = {
     'Pago':               { bg: '#3fbf7f22', color: 'var(--green)', label: '✅ Pago' },
@@ -593,4 +656,5 @@ function OrderRow({ order, detail }) {
     </div>
   )
 }
+
 
