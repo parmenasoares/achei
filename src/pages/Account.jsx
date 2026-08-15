@@ -476,28 +476,18 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE EXTERNO: AddressForm
-// Definido FORA do Account para evitar perda de foco nos inputs
+// Sem nenhuma função const interna — resolve perda de foco nos inputs
 // ─────────────────────────────────────────────────────────────────────────────
 function AddressForm({ addrForm, setAddrForm, addrMessage, addrSaving, cepLoading, onSubmit, onCancel, onCepLookup }) {
-  const field = (name, label, opts = {}) => (
-    <label key={name} style={opts.wide ? { gridColumn: '1/-1' } : {}}>
-      {label}
-      <input
-        name={name}
-        value={addrForm[name] || ''}
-        onChange={e => setAddrForm(prev => ({ ...prev, [name]: e.target.value }))}
-        placeholder={opts.placeholder || ''}
-        maxLength={opts.maxLength}
-        autoComplete={opts.autoComplete || 'off'}
-        style={{ width: '100%' }}
-      />
-    </label>
-  )
+  const handleChange = e => {
+    const { name, value, type, checked } = e.target
+    setAddrForm(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
+  }
 
   const handleCep = e => {
     const raw = e.target.value.replace(/\D/g, '').slice(0, 8)
-    const formatted = raw.length > 5 ? raw.replace(/^(\d{5})(\d)/, '$1-$2') : raw
-    setAddrForm(prev => ({ ...prev, postal_code: formatted }))
+    const fmt = raw.length > 5 ? raw.replace(/^(\d{5})(\d)/, '$1-$2') : raw
+    setAddrForm(prev => ({ ...prev, postal_code: fmt }))
     if (raw.length === 8 && onCepLookup) onCepLookup(raw)
   }
 
@@ -509,10 +499,16 @@ function AddressForm({ addrForm, setAddrForm, addrMessage, addrSaving, cepLoadin
       </div>
 
       <div className="form-grid">
-        {field('label',     'Apelido (ex: Casa, Trabalho)', { placeholder: 'Casa' })}
-        {field('recipient', 'Nome do destinatário',         { placeholder: 'Opcional' })}
+        <label>
+          Apelido (ex: Casa, Trabalho)
+          <input name="label" value={addrForm.label || ''} onChange={handleChange} placeholder="Casa" autoComplete="off" style={{ width: '100%' }} />
+        </label>
 
-        {/* CEP com busca automática */}
+        <label>
+          Nome do destinatário
+          <input name="recipient" value={addrForm.recipient || ''} onChange={handleChange} placeholder="Opcional" autoComplete="off" style={{ width: '100%' }} />
+        </label>
+
         <label style={{ position: 'relative' }}>
           CEP
           <input
@@ -522,33 +518,63 @@ function AddressForm({ addrForm, setAddrForm, addrMessage, addrSaving, cepLoadin
             placeholder="00000-000"
             maxLength={9}
             autoComplete="postal-code"
-            style={{ width: '100%', paddingRight: cepLoading ? 36 : undefined }}
+            style={{ width: '100%', paddingRight: cepLoading ? 40 : undefined }}
           />
           {cepLoading && (
             <span style={{
-              position: 'absolute', right: 12, bottom: 12,
-              width: 16, height: 16, border: '2px solid var(--orange)',
-              borderTopColor: 'transparent', borderRadius: '50%',
+              position: 'absolute', right: 12, bottom: 11,
+              width: 16, height: 16,
+              border: '2px solid var(--orange)',
+              borderTopColor: 'transparent',
+              borderRadius: '50%',
               display: 'inline-block',
               animation: 'spin 0.7s linear infinite',
             }} />
           )}
         </label>
 
-        {field('state',        'Estado (UF)', { placeholder: 'SP', maxLength: 2 })}
-        {field('street',       'Rua / Avenida', { wide: true, placeholder: 'Rua das Flores', autoComplete: 'street-address' })}
-        {field('number',       'Número',         { placeholder: '123' })}
-        {field('complement',   'Complemento',    { placeholder: 'Apto 42, Bloco B' })}
-        {field('neighborhood', 'Bairro',          { placeholder: 'Centro' })}
-        {field('city',         'Cidade',          { placeholder: 'São Paulo', autoComplete: 'address-level2' })}
-        {field('reference',    'Ponto de referência', { wide: true, placeholder: 'Próximo à padaria' })}
+        <label>
+          Estado (UF)
+          <input name="state" value={addrForm.state || ''} onChange={handleChange} placeholder="SP" maxLength={2} style={{ width: '100%' }} />
+        </label>
+
+        <label style={{ gridColumn: '1/-1' }}>
+          Rua / Avenida
+          <input name="street" value={addrForm.street || ''} onChange={handleChange} placeholder="Rua das Flores" autoComplete="street-address" style={{ width: '100%' }} />
+        </label>
+
+        <label>
+          Número
+          <input name="number" value={addrForm.number || ''} onChange={handleChange} placeholder="123" style={{ width: '100%' }} />
+        </label>
+
+        <label>
+          Complemento
+          <input name="complement" value={addrForm.complement || ''} onChange={handleChange} placeholder="Apto 42, Bloco B" style={{ width: '100%' }} />
+        </label>
+
+        <label>
+          Bairro
+          <input name="neighborhood" value={addrForm.neighborhood || ''} onChange={handleChange} placeholder="Centro" style={{ width: '100%' }} />
+        </label>
+
+        <label>
+          Cidade
+          <input name="city" value={addrForm.city || ''} onChange={handleChange} placeholder="São Paulo" autoComplete="address-level2" style={{ width: '100%' }} />
+        </label>
+
+        <label style={{ gridColumn: '1/-1' }}>
+          Ponto de referência
+          <input name="reference" value={addrForm.reference || ''} onChange={handleChange} placeholder="Próximo à padaria" style={{ width: '100%' }} />
+        </label>
       </div>
 
       <label style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, fontSize: 14, cursor: 'pointer' }}>
         <input
           type="checkbox"
+          name="is_main"
           checked={addrForm.is_main || false}
-          onChange={e => setAddrForm(prev => ({ ...prev, is_main: e.target.checked }))}
+          onChange={handleChange}
           style={{ width: 16, height: 16 }}
         />
         Definir como endereço principal
@@ -563,9 +589,6 @@ function AddressForm({ addrForm, setAddrForm, addrMessage, addrSaving, cepLoadin
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTE EXTERNO: AddressCard
-// ─────────────────────────────────────────────────────────────────────────────
 function AddressCard({ addr, onEdit, onDelete, onSetMain, confirmDel, setConfirmDel }) {
   return (
     <article className="panel address-card" style={{ position: 'relative' }}>
@@ -656,5 +679,6 @@ function OrderRow({ order, detail }) {
     </div>
   )
 }
+
 
 
