@@ -1,4 +1,5 @@
 import { Suspense, lazy, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { supabase } from './lib/supabase.js'
 import Header from './components/Header.jsx'
 import Footer from './components/Footer.jsx'
 import MobileBottomNav from './components/MobileBottomNav.jsx'
@@ -16,6 +17,7 @@ const Account = lazy(() => import('./pages/Account.jsx'))
 const SellerDashboard = lazy(() => import('./pages/SellerDashboard.jsx'))
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard.jsx'))
 const DeliverySignup = lazy(() => import('./pages/DeliverySignup.jsx'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword.jsx'))
 
 const read = key => { try { return JSON.parse(localStorage.getItem(key) || '[]') } catch { return [] } }
 const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -36,6 +38,18 @@ export default function App() {
   const [payment, setPayment] = useState('Cartão de crédito')
   const [toast, setToast] = useState('')
   const [chat, setChat] = useState(false)
+  const [resetMode, setResetMode] = useState(false)
+
+  // Interceptar link de redefinição de senha
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setResetMode(true)
+        setPage('reset-password')
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   useEffect(() => localStorage.setItem('acheii_wish', JSON.stringify(favorites)), [favorites])
   useEffect(() => localStorage.setItem('acheii_cart', JSON.stringify(cart)), [cart])
@@ -68,7 +82,8 @@ export default function App() {
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const selectCategory = value => { setCategory(value); navigate('search') }
 
-  const content = page === 'home' ? <Home products={catalogProducts} onOpen={open} onPage={navigate} onCategory={selectCategory} />
+  const content = page === 'reset-password' ? <ResetPassword onDone={() => { setResetMode(false); setPage('home'); setToast('Senha redefinida com sucesso!') }} />
+    : page === 'home' ? <Home products={catalogProducts} onOpen={open} onPage={navigate} onCategory={selectCategory} />
     : page === 'search' ? <Search products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
     : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('search')} onSeller={() => navigate('seller')} />
     : page === 'seller' ? <Seller products={catalogProducts} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
