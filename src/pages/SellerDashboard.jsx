@@ -104,8 +104,10 @@ function ProductForm({ draft, setDraft, notice, onSubmit, onClear }) {
           <div className="media-preview">
             {draft.photos.map((p, i) => (
               <figure key={p.url}>
-                <img src={p.url} alt={p.name} />
-                <button type="button" onClick={() => removePhoto(i)} aria-label={`Remover foto ${i+1}`}>×</button>
+                <div className="photo-wrap">
+                  <img src={p.url} alt={p.name} />
+                  <button type="button" onClick={() => removePhoto(i)} aria-label={`Remover foto ${i+1}`}>×</button>
+                </div>
                 <figcaption>{i === 0 ? 'Capa' : `Foto ${i+1}`}</figcaption>
               </figure>
             ))}
@@ -126,10 +128,10 @@ function ProductForm({ draft, setDraft, notice, onSubmit, onClear }) {
         </div>
 
         {draft.videos.length > 0 && (
-          <div className="media-preview">
+          <div className="media-preview-video">
             {draft.videos.map((v, i) => (
               <figure key={v.url}>
-                <video src={v.url} controls style={{ width: '100%', borderRadius: 8, background: '#000' }} />
+                <video src={v.url} controls />
                 <button type="button" onClick={() => removeVideo(i)} aria-label={`Remover vídeo ${i+1}`}>×</button>
                 <figcaption>Vídeo {i+1}</figcaption>
               </figure>
@@ -762,4 +764,5 @@ function SellerOrder({ order, onAction }) {
     </div>
   )
 }
+
 
