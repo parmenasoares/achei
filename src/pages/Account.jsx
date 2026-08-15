@@ -50,6 +50,11 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   const [addrMessage,  setAddrMessage]  = useState('')
   const [confirmDel,   setConfirmDel]   = useState(null)   // id do endereço aguardando confirmação
 
+  // Pagamentos
+  const [payments,         setPayments]         = useState([])
+  const [paymentsLoading,  setPaymentsLoading]  = useState(false)
+  const [selectedPayment,  setSelectedPayment]  = useState(null)
+
   // ─── Carregar perfil ────────────────────────────────────────────────────────
   useEffect(() => {
     let active = true
@@ -91,6 +96,52 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   useEffect(() => {
     if (userId) loadAddresses(userId)
   }, [userId])
+
+  const loadPayments = async (uid) => {
+    if (!uid) return
+    setPaymentsLoading(true)
+    // Busca pedidos do localStorage (enquanto não há tabela de pagamentos)
+    const stored = []
+    try {
+      const raw = localStorage.getItem('acheii_orders')
+      if (raw) stored.push(...JSON.parse(raw))
+    } catch {}
+    // Também tenta buscar da tabela orders no Supabase se existir
+    const { data } = await supabase
+      .from('orders')
+      .select('id, created_at, total, status, payment_status, payment_method, items')
+      .eq('user_id', uid)
+      .order('created_at', { ascending: false })
+      .limit(50)
+    setPaymentsLoading(false)
+    if (data && data.length) {
+      setPayments(data.map(o => ({
+        id:             o.id,
+        date:           new Date(o.created_at).toLocaleDateString('pt-BR'),
+        total:          typeof o.total === 'number'
+                          ? `R$ ${o.total.toFixed(2).replace('.', ',')}`
+                          : o.total || 'R$ —',
+        status:         o.payment_status || o.status || 'Pago',
+        method:         o.payment_method || '—',
+        items:          o.items || [],
+      })))
+    } else if (stored.length) {
+      setPayments(stored.map(o => ({
+        id:     o.id || '—',
+        date:   o.date || '—',
+        total:  o.total || '—',
+        status: o.status || 'Pago',
+        method: o.payment || '—',
+        items:  o.items || [],
+      })))
+    } else {
+      setPayments([])
+    }
+  }
+
+  useEffect(() => {
+    if (section === 'payments' && userId && !payments.length) loadPayments(userId)
+  }, [section, userId])
 
   // ─── Salvar endereço (criar ou atualizar) ──────────────────────────────────
   const saveAddress = async (e) => {
@@ -362,7 +413,7 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
               <div className="panel-title"><h2>Atalhos</h2></div>
               <button className="quick-link" onClick={() => onNavigate('home')}>🛍️ Continuar comprando <span>›</span></button>
               <button className="quick-link" onClick={() => setSection('addresses')}>📍 Meus endereços <span>›</span></button>
-              <button className="quick-link" onClick={() => setSection('payments')}>💳 Formas de pagamento <span>›</span></button>
+              <button className="quick-link" onClick={() => setSection('payments')}>💳 Histórico de pagamentos <span>›</span></button>
             </article>
           </section>
         </>
@@ -401,12 +452,95 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
         </>
       )}
 
-      {/* Pagamentos */}
+      {/* Pagamentos — histórico de pagamentos realizados */}
       {section === 'payments' && (
-        <section className="portal-grid">
-          <article className="panel address-card"><b>💳 Visa final 4821 <em>Principal</em></b><p>Válido até 08/28</p><button>Editar cartão</button></article>
-          <article className="panel address-card"><b>⚡ PIX</b><p>Pagamento instantâneo disponível</p><button>Gerenciar chaves</button></article>
-        </section>
+        <>
+          {selectedPayment ? (
+            // Detalhe do pagamento
+            <article className="panel" style={{ maxWidth: 560 }}>
+              <div className="panel-title">
+                <h2>Detalhes do pagamento</h2>
+                <button onClick={() => setSelectedPayment(null)}>← Voltar</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Pedido</span>
+                  <b>{selectedPayment.id}</b>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Data</span>
+                  <span>{selectedPayment.date}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Valor</span>
+                  <b style={{ color: 'var(--yellow)' }}>{selectedPayment.total}</b>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Forma de pagamento</span>
+                  <span>{selectedPayment.method}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--line)' }}>
+                  <span style={{ color: 'var(--muted)' }}>Status</span>
+                  <PaymentBadge status={selectedPayment.status} />
+                </div>
+                {selectedPayment.items && selectedPayment.items.length > 0 && (
+                  <div style={{ paddingTop: 8 }}>
+                    <p style={{ color: 'var(--muted)', fontSize: 12, marginBottom: 8 }}>ITENS DA COMPRA</p>
+                    {selectedPayment.items.map((item, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
+                        <span>{item.name || item}</span>
+                        {item.price && <span style={{ color: 'var(--yellow)' }}>R$ {Number(item.price).toFixed(2).replace('.', ',')}</span>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </article>
+          ) : (
+            // Lista de pagamentos
+            <article className="panel">
+              <div className="panel-title">
+                <h2>Histórico de pagamentos</h2>
+                <button onClick={() => loadPayments(userId)} style={{ fontSize: 12 }}>↻ Atualizar</button>
+              </div>
+              {paymentsLoading ? (
+                <p style={{ color: 'var(--muted)', padding: '20px 0' }}>Carregando pagamentos...</p>
+              ) : payments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--muted)' }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>💳</div>
+                  <p>Nenhum pagamento encontrado.</p>
+                  <p style={{ fontSize: 13, marginTop: 6 }}>Seus pagamentos aparecerão aqui após realizar uma compra.</p>
+                  <button className="primary" style={{ marginTop: 16 }} onClick={() => onNavigate('home')}>
+                    Explorar produtos
+                  </button>
+                </div>
+              ) : (
+                payments.map((p, i) => (
+                  <div
+                    key={p.id + i}
+                    onClick={() => setSelectedPayment(p)}
+                    style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '14px 0', borderTop: '1px solid var(--line)',
+                      cursor: 'pointer', gap: 12, flexWrap: 'wrap',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '.75'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    <span style={{ fontSize: 24, flexShrink: 0 }}>🧾</span>
+                    <div style={{ flex: 1 }}>
+                      <b style={{ fontSize: 14 }}>Pedido {p.id}</b>
+                      <small style={{ display: 'block', color: 'var(--muted)', fontSize: 12, marginTop: 2 }}>{p.date}</small>
+                    </div>
+                    <PaymentBadge status={p.status} />
+                    <b style={{ color: 'var(--yellow)', fontFamily: 'Oswald, sans-serif', fontSize: 18 }}>{p.total}</b>
+                    <span style={{ color: 'var(--muted)', fontSize: 18 }}>›</span>
+                  </div>
+                ))
+              )}
+            </article>
+          )}
+        </>
       )}
 
       {/* Perfil */}
@@ -430,6 +564,25 @@ export default function Account({ onNavigate, user: propUser, onLogout }) {
   )
 }
 
+function PaymentBadge({ status }) {
+  const map = {
+    'Pago':               { bg: '#3fbf7f22', color: 'var(--green)', label: '✅ Pago' },
+    'Entregue':           { bg: '#3fbf7f22', color: 'var(--green)', label: '✅ Pago' },
+    'Pagamento pendente': { bg: '#ffc93c22', color: 'var(--yellow)', label: '⏳ Pendente' },
+    'Pendente':           { bg: '#ffc93c22', color: 'var(--yellow)', label: '⏳ Pendente' },
+    'Cancelado':          { bg: '#e5484d22', color: '#e5484d',       label: '❌ Cancelado' },
+    'Estornado':          { bg: '#e5484d22', color: '#e5484d',       label: '↩️ Estornado' },
+  }
+  const style = map[status] || { bg: 'var(--surface2)', color: 'var(--muted)', label: status || '—' }
+  return (
+    <span style={{
+      background: style.bg, color: style.color,
+      padding: '4px 10px', borderRadius: 7,
+      fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap',
+    }}>{style.label}</span>
+  )
+}
+
 function OrderRow({ order, detail }) {
   return (
     <div className="order-row">
@@ -440,3 +593,4 @@ function OrderRow({ order, detail }) {
     </div>
   )
 }
+
