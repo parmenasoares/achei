@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import '../styles/seller-product-form.css'
+import { supabase } from '../lib/supabase.js'
 
 // ─── Dados iniciais ──────────────────────────────────────────────────────────
 const initialOrders = [
@@ -383,6 +384,82 @@ export default function SellerDashboard({ onNavigate }) {
   const [draft,    setDraft]    = useState({ ...EMPTY_PRODUCT, compatibility: [{ ...EMPTY_COMPAT }], marketplaces: { mercadolivre: false, shopee: false } })
   const [notice,   setNotice]   = useState('')
 
+  // ─── Configurações da loja ────────────────────────────────────────────────
+  const [storeSettings, setStoreSettings] = useState({
+    name:     'AutoPeças Premium SP',
+    desc:     'Especialistas em peças originais e paralelas.',
+    shipping: '24h',
+    phone:    '',
+    whatsapp: '',
+    city:     '',
+    state:    '',
+  })
+  const [settingsBusy,    setSettingsBusy]    = useState(false)
+  const [settingsNotice,  setSettingsNotice]  = useState('')
+  const [settingsEditing, setSettingsEditing] = useState(false)
+  const [settingsDraft,   setSettingsDraft]   = useState(null)
+
+  const openSettingsEdit = () => {
+    setSettingsDraft({ ...storeSettings })
+    setSettingsEditing(true)
+    setSettingsNotice('')
+  }
+
+  const cancelSettingsEdit = () => {
+    setSettingsEditing(false)
+    setSettingsDraft(null)
+    setSettingsNotice('')
+  }
+
+  const handleSettingsChange = e => {
+    const { name, value } = e.target
+    setSettingsDraft(prev => ({ ...prev, [name]: value }))
+  }
+
+  const saveSettings = async e => {
+    e.preventDefault()
+    if (!settingsDraft.name.trim()) {
+      setSettingsNotice('O nome da loja é obrigatório.')
+      return
+    }
+    setSettingsBusy(true)
+    setSettingsNotice('')
+
+    // Tenta salvar no Supabase (tabela store_profiles)
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const { error } = await supabase
+        .from('store_profiles')
+        .upsert({
+          user_id:           user.id,
+          name:              settingsDraft.name.trim(),
+          description:       settingsDraft.desc.trim(),
+          shipping_deadline: settingsDraft.shipping,
+          phone:             settingsDraft.phone.trim(),
+          whatsapp:          settingsDraft.whatsapp.trim(),
+          city:              settingsDraft.city.trim(),
+          state:             settingsDraft.state.trim().toUpperCase(),
+          updated_at:        new Date().toISOString(),
+        }, { onConflict: 'user_id' })
+
+      if (error) {
+        setSettingsNotice('Erro ao salvar. Tente novamente.')
+        setSettingsBusy(false)
+        return
+      }
+    } else {
+      // Sem sessão: salva no localStorage
+      localStorage.setItem('acheii_store_settings', JSON.stringify(settingsDraft))
+    }
+
+    setStoreSettings({ ...settingsDraft })
+    setSettingsEditing(false)
+    setSettingsDraft(null)
+    setSettingsBusy(false)
+    setSettingsNotice('')
+    setNotice('✅ Informações da loja salvas com sucesso!')
+  }
+
   const markShipped = id => setOrders(list => list.map(o => o.id === id ? { ...o, status: o.status === 'A separar' ? 'Enviado' : 'Entregue' } : o))
 
   const toggleProduct = id => setProducts(list => list.map(p => p.id === id ? { ...p, active: !p.active } : p))
@@ -536,33 +613,133 @@ export default function SellerDashboard({ onNavigate }) {
 
       {/* Configurações */}
       {section === 'settings' && (
-        <article className="panel profile-form">
-          <div className="panel-title"><h2>Informações da loja</h2><button>Salvar</button></div>
-          <label>Nome da loja<input defaultValue="AutoPeças Premium SP" /></label>
-          <label>Descrição<textarea defaultValue="Especialistas em peças originais e paralelas." /></label>
-          <label>Prazo de envio
-            <select defaultValue="24h"><option>24h</option><option>48h</option><option>72h</option></select>
-          </label>
-
-          <div className="panel-title" style={{ marginTop: 24 }}>
-            <h2>🌐 Conexões com Marketplaces</h2>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
-            Conecte suas contas para habilitar o espelhamento automático de produtos.
-          </p>
-          {Object.entries(MARKETPLACE_META).map(([key, meta]) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid var(--line)' }}>
-              <span className="marketplace-badge" style={{ background: meta.color, color: meta.text }}>
-                {meta.icon} {meta.label}
-              </span>
-              <span style={{ flex: 1, fontSize: 13, color: 'var(--muted)' }}>Conta não conectada</span>
-              <button className="table-action">Conectar conta</button>
+        <>
+          {/* ── Informações da loja ── */}
+          <form className="panel profile-form" onSubmit={saveSettings}>
+            <div className="panel-title">
+              <h2>Informações da loja</h2>
+              {settingsEditing
+                ? <button type="button" onClick={cancelSettingsEdit}>Cancelar</button>
+                : <button type="button" onClick={openSettingsEdit}>Editar</button>
+              }
             </div>
-          ))}
-          <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12 }}>
-            A integração utiliza as APIs oficiais de cada marketplace. Ao conectar, você será redirecionado para autorizar o acesso.
-          </p>
-        </article>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <label style={{ gridColumn: '1/-1' }}>
+                Nome da loja *
+                <input
+                  name="name"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.name : storeSettings.name}
+                  onChange={handleSettingsChange}
+                />
+              </label>
+              <label style={{ gridColumn: '1/-1' }}>
+                Descrição
+                <textarea
+                  name="desc"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.desc : storeSettings.desc}
+                  onChange={handleSettingsChange}
+                  rows={3}
+                />
+              </label>
+              <label>
+                Telefone
+                <input
+                  name="phone"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.phone : storeSettings.phone}
+                  onChange={handleSettingsChange}
+                  placeholder="(11) 9 9999-0000"
+                />
+              </label>
+              <label>
+                WhatsApp
+                <input
+                  name="whatsapp"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.whatsapp : storeSettings.whatsapp}
+                  onChange={handleSettingsChange}
+                  placeholder="(11) 9 9999-0000"
+                />
+              </label>
+              <label>
+                Cidade
+                <input
+                  name="city"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.city : storeSettings.city}
+                  onChange={handleSettingsChange}
+                  placeholder="São Paulo"
+                />
+              </label>
+              <label>
+                Estado (UF)
+                <input
+                  name="state"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.state : storeSettings.state}
+                  onChange={handleSettingsChange}
+                  placeholder="SP"
+                  maxLength={2}
+                />
+              </label>
+              <label>
+                Prazo de envio
+                <select
+                  name="shipping"
+                  disabled={!settingsEditing}
+                  value={settingsEditing ? settingsDraft.shipping : storeSettings.shipping}
+                  onChange={handleSettingsChange}
+                >
+                  <option value="24h">24 horas</option>
+                  <option value="48h">48 horas</option>
+                  <option value="72h">72 horas</option>
+                  <option value="5d">5 dias úteis</option>
+                  <option value="10d">10 dias úteis</option>
+                </select>
+              </label>
+            </div>
+
+            {settingsNotice && (
+              <p className="auth-message" role="alert">{settingsNotice}</p>
+            )}
+
+            {settingsEditing && (
+              <button className="primary" type="submit" disabled={settingsBusy} style={{ marginTop: 8 }}>
+                {settingsBusy ? 'Salvando...' : 'Salvar alterações'}
+              </button>
+            )}
+          </form>
+
+          {/* ── Marketplaces ── */}
+          <article className="panel" style={{ marginTop: 16 }}>
+            <div className="panel-title">
+              <h2>🌐 Conexões com Marketplaces</h2>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 16 }}>
+              Conecte suas contas para habilitar o espelhamento automático de produtos.
+            </p>
+            {Object.entries(MARKETPLACE_META).map(([key, meta]) => (
+              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: '1px solid var(--line)' }}>
+                <span className="marketplace-badge" style={{ background: meta.color, color: meta.text }}>
+                  {meta.icon} {meta.label}
+                </span>
+                <span style={{ flex: 1, fontSize: 13, color: 'var(--muted)' }}>Conta não conectada</span>
+                <button
+                  className="table-action"
+                  onClick={() => setNotice(`Para conectar o ${meta.label}, acesse as configurações de API do marketplace e insira as credenciais.`)}
+                >
+                  Conectar conta
+                </button>
+              </div>
+            ))}
+            <p style={{ fontSize: 11, color: 'var(--muted)', marginTop: 12 }}>
+              A integração utiliza as APIs oficiais de cada marketplace. Ao conectar, você será redirecionado para autorizar o acesso.
+            </p>
+          </article>
+        </>
       )}
 
       {notice && section !== 'products' && <div className="toast">{notice}</div>}
@@ -585,3 +762,4 @@ function SellerOrder({ order, onAction }) {
     </div>
   )
 }
+
