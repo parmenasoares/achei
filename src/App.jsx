@@ -38,18 +38,81 @@ export default function App() {
   const [payment, setPayment] = useState('Cartão de crédito')
   const [toast, setToast] = useState('')
   const [chat, setChat] = useState(false)
-  const [resetMode, setResetMode] = useState(false)
 
-  // Interceptar link de redefinição de senha
+  // ─── AUTENTICAÇÃO: estado global persistente ───────────────────────────────
+  const [user, setUser] = useState(null)       // { id, email, name, avatar, role }
+  const [authReady, setAuthReady] = useState(false) // evita flash de "Entrar" antes de checar sessão
+
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+    // 1. Ler sessão existente no localStorage (Supabase já persiste automaticamente)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) applySession(session)
+      setAuthReady(true)
+    })
+
+    // 2. Escutar mudanças de estado (login, logout, refresh, recovery)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
-        setResetMode(true)
         setPage('reset-password')
+        return
+      }
+      if (event === 'SIGNED_IN' && session?.user) {
+        applySession(session)
+        setAuthReady(true)
+        return
+      }
+      if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setAuthReady(true)
+        return
+      }
+      // TOKEN_REFRESHED — manter sessão atualizada silenciosamente
+      if (event === 'TOKEN_REFRESHED' && session?.user) {
+        applySession(session)
       }
     })
+
     return () => subscription.unsubscribe()
   }, [])
+
+  const applySession = async (session) => {
+    const u = session.user
+    // Buscar perfil adicional (nome, foto, role) da tabela profiles
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url, role')
+      .eq('id', u.id)
+      .maybeSingle()
+
+    const name = profile?.full_name
+      || u.user_metadata?.full_name
+      || u.user_metadata?.name
+      || u.email?.split('@')[0]
+      || 'Usuário'
+
+    const role = profile?.role || u.user_metadata?.account_type || 'buyer'
+
+    setUser({
+      id: u.id,
+      email: u.email,
+      name,
+      avatar: profile?.avatar_url || u.user_metadata?.avatar_url || null,
+      role,
+    })
+  }
+
+  const handleLogin = (role) => {
+    setToast('Acesso realizado!')
+    navigate(role === 'seller' ? 'seller-dashboard' : role === 'admin' ? 'admin-dashboard' : 'account')
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+    navigate('home')
+    setToast('Você saiu da sua conta.')
+  }
+  // ──────────────────────────────────────────────────────────────────────────
 
   useEffect(() => localStorage.setItem('acheii_wish', JSON.stringify(favorites)), [favorites])
   useEffect(() => localStorage.setItem('acheii_cart', JSON.stringify(cart)), [cart])
@@ -78,26 +141,42 @@ export default function App() {
   const openSearch = () => navigate('search')
   const add = product => { setCart(items => { const item = items.find(x => x.id === product.id); return item ? items.map(x => x.id === product.id ? { ...x, qty: x.qty + 1 } : x) : [...items, { ...product, qty: 1 }] }); setToast('Produto adicionado ao carrinho!') }
   const open = product => { setSelected(product); navigate('product') }
-  const toggle = id => setFavorites(items => items.includes(id) ? items.filter(x => x !== id) : [...items,id])
+  const toggle = id => setFavorites(items => items.includes(id) ? items.filter(x => x !== id) : [...items, id])
   const cartCount = cart.reduce((sum, item) => sum + item.qty, 0)
   const selectCategory = value => { setCategory(value); navigate('search') }
 
-  const content = page === 'reset-password' ? <ResetPassword onDone={() => { setResetMode(false); setPage('home'); setToast('Senha redefinida com sucesso!') }} />
+  const content = page === 'reset-password'
+    ? <ResetPassword onDone={() => { setPage('home'); setToast('Senha redefinida com sucesso!') }} />
     : page === 'home' ? <Home products={catalogProducts} onOpen={open} onPage={navigate} onCategory={selectCategory} />
     : page === 'search' ? <Search products={visible} category={category} setCategory={setCategory} sort={sort} setSort={setSort} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} vehicleFilters={vehicleFilters} setVehicleFilters={setVehicleFilters} />
     : page === 'product' ? <Product product={selected} favorite={selected && favorites.includes(selected.id)} onFavorite={toggle} onAdd={(product, buy) => { add(product); if (buy) navigate('checkout') }} onBack={() => navigate('search')} onSeller={() => navigate('seller')} />
     : page === 'seller' ? <Seller products={catalogProducts} favorites={favorites} onFavorite={toggle} onOpen={open} onAdd={add} onChat={() => setChat(true)} />
     : page === 'checkout' ? <Checkout cart={cart} payment={payment} setPayment={setPayment} onConfirm={order => { const orders = read('acheii_orders'); localStorage.setItem('acheii_orders', JSON.stringify([order, ...orders])); setCart([]); setToast('Pedido confirmado! Código: ' + order.id); navigate('track') }} />
     : page === 'track' ? <Track onSearch={openSearch} />
-    : page === 'account' ? <Account onNavigate={navigate} />
+    : page === 'account' ? <Account onNavigate={navigate} user={user} onLogout={handleLogout} />
     : page === 'seller-dashboard' ? <SellerDashboard onNavigate={navigate} />
     : page === 'admin-dashboard' ? <AdminDashboard />
     : page === 'delivery' ? <DeliverySignup />
-    : <Auth onLogin={role => { setToast('Acesso realizado!'); navigate(role === 'seller' ? 'seller-dashboard' : role === 'admin' ? 'admin-dashboard' : 'account') }} />
+    : <Auth onLogin={handleLogin} />
 
-  return <><Header query={query} setQuery={setQuery} cartCount={cartCount} favorites={favorites.length} onPage={navigate} onCategory={selectCategory} onCart={() => setDrawer('cart')} onFavorites={() => setDrawer('favorites')} />
+  // Não renderiza nada até confirmar estado de autenticação (evita flash)
+  if (!authReady) return <div style={{ minHeight: '100vh', background: 'var(--bg, #0f1013)' }} />
+
+  return <>
+    <Header
+      query={query} setQuery={setQuery}
+      cartCount={cartCount} favorites={favorites.length}
+      onPage={navigate} onCategory={selectCategory}
+      onCart={() => setDrawer('cart')}
+      onFavorites={() => setDrawer('favorites')}
+      user={user}
+      onLogout={handleLogout}
+    />
     <Suspense fallback={<main className="container loading-page">Carregando...</main>}>{content}</Suspense>
-    <Footer onPage={navigate} /><MobileBottomNav activePage={page === 'account' ? 'auth' : page} onNavigate={navigate} onSearch={openSearch} />
+    <Footer onPage={navigate} />
+    <MobileBottomNav activePage={page === 'account' ? 'auth' : page} onNavigate={navigate} onSearch={openSearch} />
     {drawer && <div className="overlay" onClick={() => setDrawer(null)}><aside className="drawer" onClick={event => event.stopPropagation()}><button className="close" onClick={() => setDrawer(null)}>×</button><h2>{drawer === 'cart' ? '🛒 Carrinho' : '♥ Favoritos'}</h2>{(drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).length === 0 ? <p className="empty">Nada por aqui ainda.</p> : (drawer === 'cart' ? cart : catalogProducts.filter(product => favorites.includes(product.id))).map(product => <div className="drawer-item" key={product.id}><img src={product.image} alt="" loading="lazy" decoding="async" /><p>{product.name}<b>R$ {(product.price * (product.qty || 1)).toFixed(2).replace('.', ',')}</b></p>{drawer === 'cart' ? <div><button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: Math.max(1, item.qty - 1) } : item))}>−</button> {product.qty} <button onClick={() => setCart(items => items.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item))}>+</button></div> : <button onClick={() => toggle(product.id)}>🗑</button>}</div>)}{drawer === 'cart' && <button className="primary full" onClick={() => navigate('checkout')}>Finalizar compra →</button>}</aside></div>}
-    {chat && <section className="chat"><button onClick={() => setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}{toast && <div className="toast">{toast}</div>}</>
+    {chat && <section className="chat"><button onClick={() => setChat(false)}>×</button><b>🏪 AutoPeças Premium SP</b><p>Olá! Como posso ajudar? 😊</p><input placeholder="Digite uma mensagem..." /></section>}
+    {toast && <div className="toast">{toast}</div>}
+  </>
 }
